@@ -1,0 +1,124 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  #app {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-theme-light-primary dark:bg-theme-dark-primary 
+           text-theme-light-text-primary dark:text-theme-dark-text-primary 
+           transition-colors duration-200;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    @apply w-2;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-[#141414];
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-red-600 rounded-full;
+  }
+
+  /* Form elements */
+  input, select, textarea {
+    @apply bg-theme-light-secondary dark:bg-theme-dark-secondary 
+           border-theme-light-border dark:border-theme-dark-border 
+           text-theme-light-text-primary dark:text-theme-dark-text-primary
+           focus:border-red-600 focus:ring-red-600;
+  }
+
+  /* Buttons */
+  button {
+    @apply transition-colors duration-200;
+  }
+}
+
+@layer components {
+  /* Common background classes */
+  .bg-base {
+    @apply bg-theme-light-primary dark:bg-theme-dark-primary;
+  }
+  
+  .bg-elevated {
+    @apply bg-theme-light-secondary dark:bg-theme-dark-secondary;
+  }
+  
+  /* Card styles */
+  .card {
+    @apply bg-theme-light-secondary dark:bg-theme-dark-secondary
+           border border-theme-light-border dark:border-theme-dark-border
+           rounded-lg shadow-lg;
+  }
+
+  /* Text color utilities */
+  .text-base {
+    @apply text-theme-light-text-primary dark:text-theme-dark-text-primary;
+  }
+  
+  .text-muted {
+    @apply text-theme-light-text-secondary dark:text-theme-dark-text-secondary;
+  }
+
+  .text-brand {
+    @apply text-red-600 hover:text-red-500;
+  }
+
+  .btn {
+    @apply px-4 py-2 rounded-md font-medium transition-colors;
+  }
+
+  .btn-primary {
+    @apply bg-red-600 text-white hover:bg-red-700;
+  }
+
+  .btn-secondary {
+    @apply bg-theme-light-secondary dark:bg-theme-dark-secondary 
+           text-theme-light-text-primary dark:text-theme-dark-text-primary
+           hover:bg-theme-light-hover dark:hover:bg-theme-dark-hover;
+  }
+
+  .input {
+    @apply mt-1 block w-full rounded-md
+           bg-theme-light-secondary dark:bg-theme-dark-secondary 
+           border-theme-light-border dark:border-theme-dark-border 
+           text-theme-light-text-primary dark:text-theme-dark-text-primary
+           focus:border-red-600 focus:ring-red-600;
+  }
+}
+
+@layer utilities {
+  .text-primary {
+    @apply text-theme-light-text-primary dark:text-theme-dark-text-primary;
+  }
+
+  .text-secondary {
+    @apply text-theme-light-text-secondary dark:text-theme-dark-text-secondary;
+  }
+
+  .bg-primary {
+    @apply bg-theme-light-primary dark:bg-theme-dark-primary;
+  }
+
+  .bg-secondary {
+    @apply bg-theme-light-secondary dark:bg-theme-dark-secondary;
+  }
+
+  .border-theme {
+    @apply border-theme-light-border dark:border-theme-dark-border;
+  }
+
+  .theme-transition {
+    @apply transition-colors duration-200;
+  }
+}
