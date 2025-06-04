@@ -60,16 +60,10 @@ export const authService = {
       
       return response.data
     } catch (error) {
-      if (error.response) {
-        // Server responded with error
-        throw new Error(error.response.data.detail || 'Login failed')
-      } else if (error.request) {
-        // Request made but no response
-        throw new Error('Network error. Please check your connection.')
-      } else {
-        // Other errors
-        throw new Error('Login failed. Please try again.')
+      if (error.response?.status === 401) {
+        throw new Error('Invalid credentials')
       }
+      throw new Error('Login failed. Please try again.')
     }
   },
 
@@ -133,11 +127,9 @@ export const authService = {
     const token = localStorage.getItem("access_token")
     if (!token) return false
     
-    // Check if token is expired
     try {
       const payload = JSON.parse(atob(token.split('.')[1]))
-      const expirationTime = payload.exp * 1000 // Convert to milliseconds
-      return expirationTime > Date.now()
+      return payload.exp * 1000 > Date.now()
     } catch {
       return false
     }

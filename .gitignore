@@ -83,4 +83,4 @@ dist-ssr
 *.sw?
 
 # Keep SQLite database
-!db.sqlite3
+!backend/db.sqlite3

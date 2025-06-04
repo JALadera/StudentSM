@@ -85,19 +85,16 @@ const router = createRouter({
 
 // Navigation guards
 router.beforeEach((to, from, next) => {
+  const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
   const isAuthenticated = authService.isAuthenticated()
 
-  if (to.meta.requiresAuth && !isAuthenticated) {
-    authService.redirectToLogin()
-    return
-  } 
-  
-  if (to.meta.requiresGuest && isAuthenticated) {
-    next("/dashboard")
-    return
+  if (requiresAuth && !isAuthenticated) {
+    next('/login')
+  } else if (to.path === '/login' && isAuthenticated) {
+    next('/dashboard')
+  } else {
+    next()
   }
-  
-  next()
 })
 
 export default router

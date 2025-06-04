@@ -87,7 +87,10 @@ const handleLogin = async () => {
     await authService.login(form.value)
     emit('success')
   } catch (err) {
-    error.value = err.message
+    error.value = err.message || 'Login failed. Please try again.'
+    if (err.message.includes('starting up')) {
+      error.value += ' (The server may take 30-60 seconds to start on first use)'
+    }
   } finally {
     loading.value = false
   }

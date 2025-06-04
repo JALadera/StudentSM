@@ -721,16 +721,21 @@ const subjectForm = ref({
 const loadStats = async () => {
   try {
     const dashboardStats = await gradesService.getDashboardStats()
+    console.log('Loaded stats:', dashboardStats) // Debug log
+    
     stats.value = {
-      totalStudents: dashboardStats.total_students,
-      totalSubjects: dashboardStats.total_subjects,
-      totalSections: dashboardStats.total_sections,
-      totalEnrollments: dashboardStats.total_enrollments
+      totalStudents: dashboardStats.total_students || 0,
+      totalSubjects: dashboardStats.total_subjects || 0,
+      totalSections: dashboardStats.total_sections || 0,
+      totalEnrollments: dashboardStats.total_enrollments || 0
     }
-    yearLevelStats.value = dashboardStats.year_level_stats
-    subjectStats.value = dashboardStats.subject_stats
+    
+    yearLevelStats.value = dashboardStats.year_level_stats || []
+    subjectStats.value = dashboardStats.subject_stats || []
   } catch (error) {
     console.error('Error loading dashboard stats:', error)
+    // Show error to user
+    error.value = 'Failed to load dashboard statistics'
   }
 }
 
