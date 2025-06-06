@@ -10,12 +10,36 @@ DEBUG = os.getenv('DJANGO_DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,.onrender.com').split(',')
 
 CORS_ALLOWED_ORIGINS = [
-    "https://studentms-frontend.vercel.app",
-    "http://localhost:5173"
+    "https://student-sm.vercel.app",  # Your Vercel frontend domain
+    "http://localhost:5173",          # Local development
+    "http://127.0.0.1:5173"          # Local development alternative
 ]
 
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']
+
+# Allow all headers for CORS
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
+
+# Allow cookies to be included in cross-site HTTP requests
+CORS_ALLOW_CREDENTIALS = True
+
+# Allow the frontend domain to access the API
+CSRF_TRUSTED_ORIGINS = [
+    'https://student-sm.vercel.app',
+    'http://localhost:5173',
+    'http://127.0.0.1:5173'
+]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -35,7 +59,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',  # Should be at the top
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -43,6 +67,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # For static files
 ]
 
 ROOT_URLCONF = 'config.urls'
