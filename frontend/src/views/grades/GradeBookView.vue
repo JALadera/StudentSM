@@ -93,15 +93,23 @@
                   :key="assessment.id"
                   class="px-6 py-4 whitespace-nowrap text-sm"
                 >
-                  <input
-                    v-model="student.grades[assessment.name]"
-                    type="number"
-                    :max="assessment.max_score"
-                    min="0"
-                    step="0.01"
-                    @change="updateGrade(student.student_id, assessment.id, student.grades[assessment.name])"
-                    class="input w-20 text-center"
-                  />
+                  <div class="relative">
+                    <input
+                      v-model="student.grades[assessment.name]"
+                      type="number"
+                      :max="assessment.max_score"
+                      min="0"
+                      step="0.01"
+                      @input="validateGradeInput($event, assessment.max_score)"
+                      @change="updateGrade(student.student_id, assessment.id, student.grades[assessment.name])"
+                      class="input w-20 text-center"
+                      :class="{ 'border-red-500': student.grades[assessment.name] > assessment.max_score }"
+                    />
+                    <span v-if="student.grades[assessment.name] > assessment.max_score" 
+                          class="absolute -bottom-5 left-0 text-xs text-red-500">
+                      Max: {{ assessment.max_score }}
+                    </span>
+                  </div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-base">
                   {{ student.total_score }}
@@ -191,6 +199,7 @@
 <script>
 import { gradesService } from '@/services/api/grades.js'
 import { studentsService } from '@/services/api/students.js'
+import { useToast } from 'vue-toastification'
 import { subjectsService } from '@/services/api/subjects.js'
 
 export default {
@@ -217,7 +226,27 @@ export default {
     await this.loadSections()
     await this.loadSubjects()
   },
+  setup() {
+    const toast = useToast()
+    return { toast }
+  },
   methods: {
+    validateGradeInput(event, maxScore) {
+      const input = event.target;
+      const value = parseFloat(input.value);
+      
+      if (isNaN(value)) return;
+      
+      // If the value exceeds max score, show a warning but allow typing
+      // The actual validation happens on change
+      if (value > maxScore) {
+        input.setCustomValidity(`Score cannot exceed ${maxScore}`);
+        this.toast.warning(`Maximum score is ${maxScore}`, { timeout: 2000 });
+      } else {
+        input.setCustomValidity('');
+      }
+    },
+    
     formatOrdinal(num) {
       const n = parseInt(num);
       return n + (['st','nd','rd'][((n + 90) % 100 - 10) % 10 - 1] || 'th');
@@ -261,20 +290,75 @@ export default {
     
     async updateGrade(studentId, assessmentId, score) {
       try {
-        await gradesService.updateGrades({
-          student: studentId,
-          assessment: assessmentId,
-          score: parseFloat(score) || 0
-        });
+        // Parse the score
+        const parsedScore = parseFloat(score);
         
-        // Show success message
-        alert('Grade updated successfully');
+        // Skip if not a valid number
+        if (isNaN(parsedScore)) {
+          this.toast.error('Please enter a valid number');
+          return;
+        }
         
-        // Reload grade book to update totals and averages
-        await this.loadGradeBook();
+        // Find the assessment to get max_score
+        const assessment = this.assessments.find(a => a.id === assessmentId);
+        
+        // Client-side validation
+        if (assessment && parsedScore > assessment.max_score) {
+          this.toast.error(`Score cannot exceed the maximum score of ${assessment.max_score}`, { timeout: 3000 });
+          
+          // Reset the input to max score
+          const student = this.gradeBookData?.students?.find(s => s.student_id === studentId);
+          if (student) {
+            student.grades[assessment.name] = assessment.max_score;
+            // Trigger a re-render
+            this.$forceUpdate();
+          }
+          return;
+        }
+        
+        // Show loading indicator
+        const toastId = this.toast.info('Updating grade...', { timeout: false });
+        
+        try {
+          // If validation passes, proceed with the API call
+          await gradesService.updateGrades({
+            student: studentId,
+            assessment: assessmentId,
+            score: parsedScore
+          });
+          
+          // Update success message
+          this.toast.update(toastId, {
+            content: 'Grade updated successfully',
+            type: 'success',
+            timeout: 3000
+          });
+          
+          // Reload grade book to update totals and averages
+          await this.loadGradeBook();
+          
+        } catch (error) {
+          // Dismiss loading toast
+          this.toast.dismiss(toastId);
+          throw error; // Re-throw to be caught by outer catch
+        }
+        
       } catch (error) {
         console.error('Error updating grade:', error);
-        alert('Failed to update grade: ' + (error.response?.data?.error || 'Unknown error'));
+        let errorMessage = 'Failed to update grade';
+        
+        // Handle specific error cases
+        if (error.response) {
+          if (error.response.status === 400) {
+            errorMessage = error.response.data.error || 'Invalid data provided';
+          } else if (error.response.status === 404) {
+            errorMessage = 'Student or assessment not found';
+          } else if (error.response.status >= 500) {
+            errorMessage = 'Server error. Please try again later.';
+          }
+        }
+        
+        this.toast.error(errorMessage);
       }
     },
     
