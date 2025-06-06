@@ -1,5 +1,6 @@
 # backend/apps/students/models.py
 from django.db import models
+from django.db.models import Q
 
 class Section(models.Model):
     name = models.CharField(max_length=50)
@@ -34,3 +35,10 @@ class Student(models.Model):
     @property
     def full_name(self):
         return f"{self.first_name} {self.last_name}"
+        
+    @property
+    def active_enrollments(self):
+        return self.enrollments.filter(is_active=True)
+        
+    def is_enrolled_in(self, subject):
+        return self.enrollments.filter(subject=subject, is_active=True).exists()

@@ -99,7 +99,7 @@
                   <p class="text-sm text-muted">Enrolled: {{ formatDate(enrollment.enrollment_date) }}</p>
                 </div>
                 <button
-                  @click="unenrollFromSubject(enrollment.id)"
+                  @click="unenrollFromSubject(enrollment)"
                   :disabled="loading"
                   class="text-brand hover:text-brand-hover theme-transition disabled:opacity-50"
                 >
@@ -112,9 +112,35 @@
 
         <!-- Grades Table -->
         <div class="mt-8">
-          <h2 class="text-2xl font-semibold text-brand mb-4">Final Grades</h2>
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-2xl font-semibold text-brand">Final Grades</h2>
+            <button 
+              @click="loadGrades" 
+              class="text-sm text-brand hover:text-brand-hover flex items-center"
+              :disabled="loading">
+              <svg v-if="loading" class="animate-spin -ml-1 mr-2 h-4 w-4 text-brand" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span v-else class="flex items-center">
+                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                </svg>
+                Refresh
+              </span>
+            </button>
+          </div>
+          
           <div class="card">
-            <div class="overflow-x-auto">
+            <div v-if="loading && !student.grades?.length" class="p-6 text-center">
+              <div class="animate-pulse flex justify-center">
+                <div class="h-4 bg-gray-700 rounded w-1/4"></div>
+              </div>
+            </div>
+            <div v-else-if="!loading && (!student.grades || !student.grades.length)" class="p-6 text-center text-muted">
+              No grades available for this student
+            </div>
+            <div v-else class="overflow-x-auto">
               <table class="w-full text-left">
                 <thead class="bg-elevated">
                   <tr>
@@ -126,20 +152,18 @@
                 </thead>
                 <tbody class="divide-y divide-theme">
                   <tr v-for="grade in student.grades" 
-                      :key="grade.subject_code">
-                    <td class="p-4 text-base">{{ grade.subject_code }}</td>
-                    <td class="p-4 text-base">{{ grade.subject_name }}</td>
-                    <td class="p-4 text-base">{{ grade.final_grade }}%</td>
+                      :key="`${grade.subject_code}-${grade.final_grade}`"
+                      class="hover:bg-elevated/50 transition-colors">
+                    <td class="p-4 text-base">{{ grade.subject_code || 'N/A' }}</td>
+                    <td class="p-4 text-base">{{ grade.subject_name || 'Unknown Subject' }}</td>
+                    <td class="p-4 text-base font-medium">
+                      {{ typeof grade.final_grade === 'number' ? Math.round(grade.final_grade * 100) / 100 : 'N/A' }}%
+                    </td>
                     <td class="p-4">
                       <span :class="getGradeStatusClass(grade.final_grade)"
-                            class="px-2 py-1 rounded-full text-xs font-medium">
-                        {{ grade.status }}
+                            class="px-3 py-1 rounded-full text-xs font-medium">
+                        {{ grade.status || 'N/A' }}
                       </span>
-                    </td>
-                  </tr>
-                  <tr v-if="!student.grades?.length">
-                    <td colspan="4" class="p-4 text-center text-muted">
-                      No grades available
                     </td>
                   </tr>
                 </tbody>
@@ -223,12 +247,14 @@ const loadStudent = async () => {
 }
 
 const loadEnrollments = async () => {
-  if (!student.value?.id) return
+  if (!student.value?.id) return;
   
-  loading.value = true
-  error.value = null
+  loading.value = true;
+  error.value = null;
   
   try {
+    console.log('Loading enrollments for student:', student.value.id);
+    
     // Load enrollments first
     const enrollmentsResponse = await subjectsService.getStudentEnrollments(student.value.id)
       .catch(err => {
@@ -236,29 +262,47 @@ const loadEnrollments = async () => {
         return [];
       });
     
-    // Update enrollments immediately
-    enrollments.value = enrollmentsResponse;
+    console.log('Enrollments loaded:', enrollmentsResponse);
+    enrollments.value = enrollmentsResponse || [];
 
-    // Try to load grades if the service exists
-    if (gradesService?.getStudentGrades) {
-      const gradesResponse = await gradesService.getStudentGrades(student.value.id)
-        .catch(err => {
-          console.error('Error loading grades:', err);
-          return [];
-        });
-
-      if (student.value) {
-        student.value = {
-          ...student.value,
-          grades: gradesResponse || []
-        };
-      }
-    }
+    // Load grades in parallel with enrollments
+    await loadGrades();
+    
   } catch (error) {
-    console.error('Error loading data:', error);
+    console.error('Error in loadEnrollments:', error);
     error.value = 'Failed to load student data';
   } finally {
     loading.value = false;
+  }
+};
+
+const loadGrades = async () => {
+  if (!student.value?.id) return;
+  
+  try {
+    console.log('Loading grades for student:', student.value.id);
+    
+    if (!gradesService?.getStudentGrades) {
+      console.warn('Grades service not available');
+      return;
+    }
+    
+    const gradesResponse = await gradesService.getStudentGrades(student.value.id);
+    console.log('Grades loaded:', gradesResponse);
+    
+    // Update the student's grades
+    student.value = {
+      ...student.value,
+      grades: Array.isArray(gradesResponse) ? gradesResponse : []
+    };
+    
+  } catch (error) {
+    console.error('Error loading grades:', error);
+    // Ensure grades is always an array
+    student.value = {
+      ...student.value,
+      grades: []
+    };
   }
 }
 
@@ -271,12 +315,13 @@ const loadSections = async () => {
 }
 
 // Make sure the unenroll function reloads data properly
-const unenrollFromSubject = async (enrollmentId) => {
-  if (!confirm('Are you sure you want to unenroll from this subject?')) return
+const unenrollFromSubject = async (enrollment) => {
+  if (!confirm(`Are you sure you want to unenroll from ${enrollment.subject_name}?`)) return
   
   try {
     loading.value = true
-    await subjectsService.unenrollStudent(enrollmentId)
+    // Use the enrollment ID to unenroll
+    await subjectsService.unenrollStudent(enrollment.id)
     await loadEnrollments() // Reload both enrollments and grades
   } catch (error) {
     console.error('Error unenrolling:', error)

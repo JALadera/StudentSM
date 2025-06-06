@@ -1,116 +1,129 @@
 // frontend/src/services/api/students.js
-import createAxiosInstance, { API_BASE_URL } from './axios'
-import { authService } from "./auth"
-
-const studentsAPI = createAxiosInstance(`${API_BASE_URL}/students`)
-
-// Add request interceptor to handle auth
-studentsAPI.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem("access_token")
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
-    return config
-  },
-  (error) => {
-    return Promise.reject(error)
-  }
-)
-
-// Add response interceptor to handle token refresh
-studentsAPI.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config
-    
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true
-      
-      try {
-        // Try to refresh token
-        await authService.refreshToken()
-        
-        // Retry original request with new token
-        const token = localStorage.getItem("access_token")
-        originalRequest.headers.Authorization = `Bearer ${token}`
-        return studentsAPI(originalRequest)
-      } catch (refreshError) {
-        // If refresh fails, redirect to login
-        localStorage.removeItem("access_token")
-        localStorage.removeItem("refresh_token")
-        window.location.href = "/login"
-        return Promise.reject(refreshError)
-      }
-    }
-    
-    return Promise.reject(error)
-  }
-)
+import axios from './axios'
 
 export const studentsService = {
+  async getStudents() {
+    try {
+      const response = await axios.get('/students/')
+      return response.data
+    } catch (error) {
+      console.error('Error fetching students:', error)
+      throw error
+    }
+  },
+
+  async getStudent(id) {
+    try {
+      const response = await axios.get(`/students/${id}/`)
+      return response.data
+    } catch (error) {
+      console.error('Error fetching student:', error)
+      throw error
+    }
+  },
+
+  async createStudent(data) {
+    try {
+      const response = await axios.post('/students/', data)
+      return response.data
+    } catch (error) {
+      console.error('Error creating student:', error)
+      throw error
+    }
+  },
+
+  async updateStudent(id, data) {
+    try {
+      const response = await axios.put(`/students/${id}/`, data)
+      return response.data
+    } catch (error) {
+      console.error('Error updating student:', error)
+      throw error
+    }
+  },
+
+  async deleteStudent(id) {
+    try {
+      await axios.delete(`/students/${id}/`)
+    } catch (error) {
+      console.error('Error deleting student:', error)
+      throw error
+    }
+  },
+
   async registerStudent(data) {
     try {
-        // Ensure all required fields are present
-        const studentData = {
-            student_id: data.student_id,
-            first_name: data.first_name,
-            last_name: data.last_name,
-            email: data.email,
-            section: data.section,
-            date_of_birth: data.date_of_birth // Add date of birth field
-        }
-
-        // Validate required fields
-        const requiredFields = ['student_id', 'first_name', 'last_name', 'email', 'section', 'date_of_birth']
-        for (const field of requiredFields) {
-            if (!studentData[field]) {
-                throw new Error(`${field.replace('_', ' ')} is required`)
-            }
-        }
-
-        // Log the request data for debugging
-        console.log('Registering student with data:', studentData)
-
-        const response = await studentsAPI.post("/", studentData)
-        return response.data
+      const response = await axios.post('/students/', data)
+      return response.data
     } catch (error) {
-        // Enhanced error handling
-        if (error.response?.data) {
-            console.error('Server error response:', error.response.data)
-            const errors = Object.entries(error.response.data)
-                .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
-                .join('\n')
-            throw new Error(errors)
-        }
-        throw error
+      console.error('Error registering student:', error)
+      if (error.response) {
+        // Log the detailed error response from the server
+        console.error('Error response data:', error.response.data);
+        console.error('Error response status:', error.response.status);
+      }
+      throw error
     }
   },
 
   async bulkRegisterStudents(data) {
-    const response = await studentsAPI.post("/bulk-register/", data)
-    return response.data
+    try {
+      const response = await axios.post("/students/bulk-register/", data)
+      return response.data
+    } catch (error) {
+      console.error('Error bulk registering students:', error)
+      throw error
+    }
   },
 
   async getStudentList(params = {}) {
     try {
-        const response = await studentsAPI.get('/', { params })
-        return {
-            results: response.data.results || response.data,
-            count: response.data.count || response.data.length
+      // Map frontend params to backend params
+      const queryParams = {
+        ...params,
+        page: params.page || 1,
+        page_size: params.perPage || 10,
+        ordering: params.ordering || 'last_name,first_name',
+        search: params.search || '',
+        section: params.section || ''
+      }
+      
+      // Remove undefined or empty params
+      Object.keys(queryParams).forEach(key => {
+        if (queryParams[key] === '' || queryParams[key] === undefined) {
+          delete queryParams[key];
         }
+      });
+      
+      console.log('Fetching students with params:', queryParams); // Debug log
+      
+      const response = await axios.get('/students/', { params: queryParams });
+      
+      // The backend now always returns paginated responses
+      return {
+        results: response.data.results || [],
+        count: response.data.count || 0,
+        page: parseInt(response.data.current_page || queryParams.page || 1),
+        page_size: parseInt(response.data.page_size || queryParams.page_size || 10)
+      };
     } catch (error) {
-        console.error('Error fetching students:', error)
-        throw error
+      console.error('Error fetching students:', error);
+      // Return empty results on error
+      return {
+        results: [],
+        count: 0,
+        page: 1,
+        page_size: params.perPage || 10
+      };
     }
   },
 
-  async getStudentDetail(id) {
+  getStudentDetail: async function(id) {
     try {
-        console.log('Fetching student details for ID:', id) // Debug log
-        const response = await studentsAPI.get(`/${id}/`)
-        console.log('API Response:', response.data) // Debug log
-        return response.data
+      console.log('Fetching student details for ID:', id)
+      const response = await axios.get(`/students/${id}/`)
+      console.log('API Response:', response.data)
+      return response.data
     } catch (error) {
       console.error('Error fetching student details:', error)
       throw error
@@ -118,18 +131,28 @@ export const studentsService = {
   },
 
   async updateStudent(id, data) {
-    const response = await studentsAPI.put(`/${id}/`, data)
-    return response.data
+    try {
+      const response = await axios.put(`/students/${id}/`, data)
+      return response.data
+    } catch (error) {
+      console.error('Error updating student:', error)
+      throw error
+    }
   },
 
   async deleteStudent(id) {
-    const response = await studentsAPI.delete(`/${id}/`)
-    return response.data
+    try {
+      const response = await axios.delete(`/students/${id}/`)
+      return response.data
+    } catch (error) {
+      console.error('Error deleting student:', error)
+      throw error
+    }
   },
 
   async assignToSection(studentId, sectionId) {
     try {
-      const response = await studentsAPI.put(`/${studentId}/section/`, {
+      const response = await axios.put(`/students/${studentId}/section/`, {
         section_id: parseInt(sectionId)
       })
       return response.data
@@ -141,17 +164,17 @@ export const studentsService = {
 
   async getSections() {
     try {
-      const response = await studentsAPI.get('/sections/')
-      console.log('API Response:', response.data) // Add this line
+      const response = await axios.get('/students/sections/')
+      console.log('API Response:', response.data)
       return response.data
     } catch (error) {
       console.error('Error fetching sections:', error)
-      throw error
+      return []
     }
   },
 
   async bulkAssignSection(data) {
-    const response = await studentsAPI.post('/bulk-assign-section/', data)
+    const response = await axios.post('/students/bulk-assign-section/', data)
     return response.data
   },
 }

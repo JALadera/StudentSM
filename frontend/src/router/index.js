@@ -9,7 +9,8 @@ import DashboardView from "@/views/dashboard/DashboardView.vue"
 import StudentListView from "@/views/students/StudentListView.vue"
 import StudentDetailView from "@/views/students/StudentDetailView.vue"
 import SubjectsView from "@/views/subjects/SubjectsView.vue"
-import SubjectDetailView from "@/views/subjects/SubjectDetailView.vue"
+// Using dynamic import for code-splitting
+const SubjectDetailView = () => import('@/views/subjects/SubjectDetailView.vue')
 
 const routes = [
   {
@@ -51,6 +52,13 @@ const routes = [
     name: "student-detail",
     component: StudentDetailView,
     meta: { requiresAuth: true },
+  },
+  {
+    path: "/students/:id/edit",
+    name: "student-edit",
+    component: () => import("@/views/students/StudentEditView.vue"),
+    meta: { requiresAuth: true },
+    props: true
   },
   {
     path: "/grades",

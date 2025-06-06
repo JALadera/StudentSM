@@ -3,6 +3,7 @@ from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from django.utils import timezone
 from .models import Subject, Enrollment, GradeWeight
 from .serializers import SubjectSerializer, GradeWeightSerializer
 from django.shortcuts import get_object_or_404
@@ -56,50 +57,162 @@ def subject_prerequisites(request, pk):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def enroll_student(request):
+    print("\n=== Enrollment Request ===")
+    print(f"Method: {request.method}")
+    print(f"Content-Type: {request.content_type}")
+    print(f"Raw data: {request.body}")
+    print(f"Parsed data: {request.data}")
+    print(f"Headers: {request.headers}")
+    print(f"User: {request.user}")
+    print(f"Auth: {request.auth}")
+    print(f"Query params: {request.query_params}")
+    
     try:
+        # Ensure we have JSON data
+        if not isinstance(request.data, dict):
+            error_msg = 'Invalid request data format. Expected JSON object.'
+            print(f"Validation error: {error_msg}")
+            return Response(
+                {'error': error_msg},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        # Get and validate request data
         subject_id = request.data.get('subject_id')
         student_id = request.data.get('student_id')
         
-        if not subject_id or not student_id:
-            return Response(
-                {'error': 'Both subject_id and student_id are required'}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-            
-        subject = get_object_or_404(Subject, pk=subject_id)
-        student = get_object_or_404(Student, pk=student_id)
+        print(f"Subject ID: {subject_id} (type: {type(subject_id)}), Student ID: {student_id} (type: {type(student_id)})")
+        print(f"Full request data: {request.data}")
         
-        # Check if already enrolled
-        if Enrollment.objects.filter(student=student, subject=subject, is_active=True).exists():
+        if not subject_id:
+            error_msg = 'subject_id is required'
+            print(f"Validation error: {error_msg}")
             return Response(
-                {'error': 'Student is already enrolled in this subject'}, 
+                {'error': error_msg, 'field': 'subject_id'}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
             
-        # Create enrollment
-        enrollment = Enrollment.objects.create(
-            student=student,
+        if not student_id:
+            error_msg = 'student_id is required'
+            print(f"Validation error: {error_msg}")
+            return Response(
+                {'error': error_msg, 'field': 'student_id'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Convert IDs to integers if they're strings
+        try:
+            subject_id = int(subject_id)
+            student_id = int(student_id)
+        except (ValueError, TypeError) as e:
+            error_msg = f'Invalid ID format: {str(e)}'
+            print(f"Validation error: {error_msg}")
+            return Response(
+                {'error': error_msg, 'details': 'IDs must be integers'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        # Get subject
+        try:
+            subject = Subject.objects.get(pk=subject_id)
+            print(f"Found subject: {subject.id} - {subject.code} - {subject.name}")
+        except Subject.DoesNotExist:
+            error_msg = f'Subject with id {subject_id} not found'
+            print(error_msg)
+            return Response(
+                {'error': error_msg, 'field': 'subject_id'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+            
+        # Get student by student_id (not primary key)
+        try:
+            student = Student.objects.get(student_id=student_id)
+            print(f"Found student: {student.student_id} - {student.full_name}")
+        except Student.DoesNotExist:
+            error_msg = f'Student with ID {student_id} not found. Please check the student ID and try again.'
+            print(error_msg)
+            return Response(
+                {'error': error_msg, 'field': 'student_id'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Check for existing enrollment
+        existing_enrollment = Enrollment.objects.filter(
+            student=student, 
             subject=subject
-        )
+        ).first()
         
-        return Response({
+        if existing_enrollment:
+            if existing_enrollment.is_active:
+                error_msg = 'Student is already enrolled in this subject'
+                print(error_msg)
+                return Response(
+                    {
+                        'error': error_msg,
+                        'enrollment_id': existing_enrollment.id,
+                        'is_active': True,
+                        'enrollment_date': existing_enrollment.enrollment_date
+                    }, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            else:
+                # Reactivate existing enrollment
+                print(f"Reactivating existing enrollment {existing_enrollment.id}")
+                existing_enrollment.is_active = True
+                existing_enrollment.enrollment_date = timezone.now().date()
+                existing_enrollment.save(update_fields=['is_active', 'enrollment_date', 'updated_at'])
+                enrollment = existing_enrollment
+        else:
+            # Create new enrollment
+            print("Creating new enrollment")
+            enrollment = Enrollment(
+                student=student,
+                subject=subject,
+                enrollment_date=timezone.now().date(),
+                is_active=True
+            )
+            try:
+                enrollment.full_clean()
+                enrollment.save()
+                print(f"Created new enrollment: {enrollment.id}")
+            except Exception as e:
+                error_msg = f'Failed to create enrollment: {str(e)}'
+                print(f"Error creating enrollment: {error_msg}")
+                return Response(
+                    {'error': error_msg, 'details': str(e)},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        
+        # Prepare success response
+        response_data = {
             'message': 'Student enrolled successfully',
-            'enrollment_id': enrollment.id
-        })
+            'enrollment_id': enrollment.id,
+            'student_id': student.id,
+            'student_name': student.full_name,
+            'subject_id': subject.id,
+            'subject_name': subject.name,
+            'enrollment_date': enrollment.enrollment_date,
+            'is_active': enrollment.is_active
+        }
+        print(f"Enrollment successful: {response_data}")
         
-    except Subject.DoesNotExist:
-        return Response(
-            {'error': 'Subject not found'}, 
-            status=status.HTTP_404_NOT_FOUND
-        )
-    except Student.DoesNotExist:
-        return Response(
-            {'error': 'Student not found'}, 
-            status=status.HTTP_404_NOT_FOUND
-        )
+        return Response(response_data, status=status.HTTP_201_CREATED)
+        
     except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        error_msg = f'An unexpected error occurred: {str(e)}'
+        print(f"\n=== ERROR in enroll_student ===")
+        print(error_trace)
+        print(f"Error details: {str(e)}")
+        print("============================\n")
+        
         return Response(
-            {'error': str(e)}, 
+            {
+                'error': error_msg,
+                'details': str(e),
+                'type': type(e).__name__
+            }, 
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
@@ -183,20 +296,34 @@ def bulk_enroll(request, pk):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
-def unenroll_student(request, enrollment_id):
+def unenroll_student(request, pk):
     """Unenroll a student from a subject using enrollment ID"""
     try:
-        enrollment = get_object_or_404(Enrollment, id=enrollment_id, is_active=True)
-        enrollment.is_active = False
-        enrollment.save()
+        print(f"Attempting to unenroll student with enrollment_id: {pk}")
         
+        # Use update() instead of save() to avoid model validation
+        updated = Enrollment.objects.filter(
+            id=pk, 
+            is_active=True
+        ).update(is_active=False)
+        
+        if updated == 0:
+            print(f"No active enrollment found with id: {pk}")
+            return Response(
+                {'error': 'Enrollment not found or already inactive'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+            
+        print(f"Successfully unenrolled student from enrollment {pk}")
         return Response({
             'message': 'Student unenrolled successfully'
         })
-    except Enrollment.DoesNotExist:
+            
+    except Exception as e:
+        print(f"Error in unenroll_student: {str(e)}")
         return Response(
-            {'error': 'Enrollment not found or already inactive'},
-            status=status.HTTP_404_NOT_FOUND
+            {'error': 'An error occurred while unenrolling the student'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
 @api_view(['GET'])

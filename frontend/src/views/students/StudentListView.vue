@@ -108,25 +108,88 @@
       </div>
 
       <!-- Pagination Controls -->
-      <div class="mt-6 flex justify-between items-center">
+      <div v-if="totalPages > 1" class="mt-6 flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
         <div class="text-sm text-muted">
-          Showing {{ paginationStart }} to {{ paginationEnd }} of {{ totalStudents }} students
+          Showing {{ paginationStart }} to {{ paginationEnd }} of {{ totalStudents }} {{ totalStudents === 1 ? 'student' : 'students' }}
         </div>
-        <div class="flex space-x-2">
-          <button 
-            @click="prevPage"
-            :disabled="currentPage === 1"
-            class="btn btn-secondary disabled:opacity-50"
-          >
-            Previous
-          </button>
-          <button 
-            @click="nextPage"
-            :disabled="currentPage >= totalPages"
-            class="btn btn-primary disabled:opacity-50"
-          >
-            Next
-          </button>
+        
+        <div class="flex items-center space-x-2">
+          <div class="text-sm text-muted mr-4">
+            Page {{ currentPage }} of {{ totalPages }}
+          </div>
+          
+          <div class="flex space-x-1">
+            <button 
+              @click="goToPage(1)"
+              :disabled="currentPage === 1"
+              class="px-3 py-1 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              :class="{ 'opacity-50 cursor-not-allowed': currentPage === 1 }"
+            >
+              &laquo;
+            </button>
+            <button 
+              @click="prevPage"
+              :disabled="currentPage === 1"
+              class="px-3 py-1 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              :class="{ 'opacity-50 cursor-not-allowed': currentPage === 1 }"
+            >
+              &lsaquo;
+            </button>
+            
+            <!-- Page numbers -->
+            <template v-for="page in visiblePages" :key="page">
+              <button 
+                v-if="page === '...'"
+                class="px-3 py-1 rounded-md border border-transparent"
+                disabled
+              >
+                {{ page }}
+              </button>
+              <button 
+                v-else
+                @click="goToPage(page)"
+                class="px-3 py-1 rounded-md border"
+                :class="{
+                  'border-brand-500 bg-brand-50 text-brand-700 font-medium': currentPage === page,
+                  'border-gray-300 bg-white text-gray-700 hover:bg-gray-50': currentPage !== page
+                }"
+              >
+                {{ page }}
+              </button>
+            </template>
+            
+            <button 
+              @click="nextPage"
+              :disabled="currentPage >= totalPages"
+              class="px-3 py-1 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              :class="{ 'opacity-50 cursor-not-allowed': currentPage >= totalPages }"
+            >
+              &rsaquo;
+            </button>
+            <button 
+              @click="goToPage(totalPages)"
+              :disabled="currentPage >= totalPages"
+              class="px-3 py-1 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              :class="{ 'opacity-50 cursor-not-allowed': currentPage >= totalPages }"
+            >
+              &raquo;
+            </button>
+          </div>
+          
+          <!-- Items per page selector -->
+          <div class="flex items-center ml-4">
+            <span class="text-sm text-muted mr-2">Per page:</span>
+            <select 
+              v-model="perPage"
+              @change="handlePerPageChange"
+              class="text-sm border-gray-300 rounded-md focus:border-brand-500 focus:ring-brand-500"
+            >
+              <option value="5">5</option>
+              <option value="10">10</option>
+              <option value="25">25</option>
+              <option value="50">50</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -200,6 +263,7 @@ export default {
       showAddModal: false,
       showEditModal: false,
       searchTerm: '',
+      searchTimeout: null, // For debouncing search
       sortOption: 'name',
       filters: {
         section: '',
@@ -244,68 +308,80 @@ export default {
 
     totalPages() {
       return Math.ceil(this.totalStudents / this.perPage)
+    },
+    
+    // Generate array of visible page numbers with ellipsis
+    visiblePages() {
+      const range = [];
+      const total = this.totalPages;
+      const current = this.currentPage;
+      const delta = 2; // Number of pages to show on each side of current page
+      
+      // Always show first page
+      range.push(1);
+      
+      // Calculate range around current page
+      const start = Math.max(2, current - delta);
+      const end = Math.min(total - 1, current + delta);
+      
+      // Add ellipsis if needed after first page
+      if (start > 2) {
+        range.push('...');
+      }
+      
+      // Add page numbers around current page
+      for (let i = start; i <= end; i++) {
+        range.push(i);
+      }
+      
+      // Add ellipsis if needed before last page
+      if (end < total - 1) {
+        range.push('...');
+      }
+      
+      // Always show last page if not already included
+      if (total > 1 && !range.includes(total)) {
+        range.push(total);
+      }
+      
+      return range;
     }
   },
 
-  watch: {
-    // Add watchers for automatic updates
-    sortOption: 'applyFiltersAndSort',
-    searchTerm: 'applyFiltersAndSort',
-    'filters.section': 'applyFiltersAndSort',
 
-    // Watch filters for changes
-    filters: {
-      handler() {
-        this.currentPage = 1 // Reset to first page when filters change
-        this.loadStudents()
-      },
-      deep: true
-    }
-  },
 
   methods: {
     formatSection,  // Make formatSection available to template
     formatOrdinal,  // Make formatOrdinal available to template
 
-    applyFiltersAndSort() {
-      // First apply filters
-      let result = [...this.students]
-      
-      // Apply section filter
-      if (this.filters.section) {
-        result = result.filter(student => 
-          student.section?.id === parseInt(this.filters.section)
-        )
+    // Update to handle server-side filtering and sorting
+    buildQueryParams() {
+      const params = {
+        page: this.currentPage,
+        page_size: this.perPage,
+        ...this.filters
       }
       
-      // Apply search filter
+      // Add search term if it exists
       if (this.searchTerm) {
-        const term = this.searchTerm.toLowerCase()
-        result = result.filter(student =>
-          student.full_name.toLowerCase().includes(term) ||
-          student.student_id.toLowerCase().includes(term) ||
-          student.email.toLowerCase().includes(term)
-        )
+        params.search = this.searchTerm
       }
       
-      // Apply sorting
-      result.sort((a, b) => {
-        switch (this.sortOption) {
-          case 'id':
-            return a.student_id.localeCompare(b.student_id)
-          case 'section':
-            const sectionA = a.section ? `${a.section.year_level}-${a.section.name}` : 'Z'
-            const sectionB = b.section ? `${b.section.year_level}-${b.section.name}` : 'Z'
-            return sectionA.localeCompare(sectionB)
-          case 'email':
-            return a.email.localeCompare(b.email)
-          case 'name':
-          default:
-            return a.full_name.localeCompare(b.full_name)
+      // Add ordering
+      if (this.sortOption) {
+        let orderBy = this.sortOption
+        if (this.sortOption === 'name') {
+          orderBy = 'last_name,first_name'  // Default name sorting
         }
-      })
+        params.ordering = orderBy
+      }
       
-      this.filteredStudents = result
+      return params
+    },
+    
+    // Simple client-side filtering for any remaining UI needs
+    applyClientSideFilters(students) {
+      return students // No client-side filtering needed as it's handled server-side
     },
 
     async loadSections() {
@@ -327,34 +403,65 @@ export default {
     async loadStudents() {
       this.loading = true
       this.error = null // Reset error state
+      
       try {
-        console.log('Loading students...') // Debug log
+        // Build query params including pagination
         const params = {
+          ...this.buildQueryParams(),
           page: this.currentPage,
-          per_page: this.perPage,
-          ...this.filters
+          perPage: this.perPage
         }
+        
+        console.log('Loading students with params:', params); // Debug log
+        
         const response = await studentsService.getStudentList(params)
-        console.log('Loaded students:', response) // Debug log
-        this.students = response.results
-        this.totalStudents = response.count
-        this.applyFiltersAndSort()
+        
+        // Update the students list and pagination info
+        this.students = response.results || []
+        this.filteredStudents = [...this.students] // Keep a copy for client-side filtering if needed
+        this.totalStudents = response.count || 0
+        
+        // Update pagination info from response
+        this.currentPage = response.page || 1
+        this.perPage = response.page_size || this.perPage
+        
+        // Update the URL with current state
+        this.updateURL()
+        
       } catch (error) {
         console.error('Failed to load students:', error)
-        this.error = 'Failed to load students. Please try again later.' // Set error message
+        this.error = 'Failed to load students. Please try again later.'
         if (error.response?.status === 401) {
-          // Token expired or invalid
           this.$router.push('/login')
-        } else {
-          alert('Error loading students. Please try again.')
         }
       } finally {
         this.loading = false
       }
     },
     
+    // Update URL with current pagination and filters
+    updateURL() {
+      const query = {}
+      if (this.currentPage > 1) query.page = this.currentPage
+      if (this.perPage !== 10) query.perPage = this.perPage
+      if (this.filters.section) query.section = this.filters.section
+      if (this.searchTerm) query.search = this.searchTerm
+      if (this.sortOption !== 'name') query.sort = this.sortOption
+      
+      // Only update URL if it's different from current
+      const currentQuery = { ...this.$route.query }
+      if (JSON.stringify(currentQuery) !== JSON.stringify(query)) {
+        this.$router.replace({ query }).catch(() => {})
+      }
+    },
+    
     searchStudents() {
-      this.applyFiltersAndSort() // Replace existing filter logic with new method
+      // Debounce the search to avoid too many API calls
+      if (this.searchTimeout) clearTimeout(this.searchTimeout)
+      this.searchTimeout = setTimeout(() => {
+        this.currentPage = 1
+        this.loadStudents()
+      }, 300)
     },
     
     viewStudent(student) {
@@ -383,15 +490,29 @@ export default {
       this.saving = true
       try {
         if (this.showAddModal) {
+          // For new students, just register them with the section
           await studentsService.registerStudent(this.studentForm)
         } else {
-          await studentsService.updateStudent(this.editingStudent.id, this.studentForm)
+          // For existing students, handle section update separately
+          const studentData = { ...this.studentForm }
+          const { section, ...basicInfo } = studentData
+          
+          // Update basic info if there are any changes
+          if (Object.keys(basicInfo).length > 0) {
+            await studentsService.updateStudent(this.editingStudent.id, basicInfo)
+          }
+          
+          // Update section if it was changed
+          if (section !== undefined && section !== null && section !== '') {
+            await studentsService.assignToSection(this.editingStudent.id, section)
+          }
         }
+        
         await this.loadStudents()
         this.closeModal()
       } catch (error) {
         console.error('Error saving student:', error)
-        alert('Failed to save student')
+        alert(error.response?.data?.error || 'Failed to save student')
       } finally {
         this.saving = false
       }
@@ -412,25 +533,82 @@ export default {
     },
 
     // Pagination methods
+    goToPage(page) {
+      if (page >= 1 && page <= this.totalPages && page !== this.currentPage) {
+        this.currentPage = page;
+        this.loadStudents();
+      }
+    },
+    
     nextPage() {
       if (this.currentPage < this.totalPages) {
-        this.currentPage++
-        this.loadStudents()
+        this.currentPage++;
+        this.loadStudents();
       }
     },
 
     prevPage() {
       if (this.currentPage > 1) {
-        this.currentPage--
-        this.loadStudents()
+        this.currentPage--;
+        this.loadStudents();
       }
+    },
+    
+    handlePerPageChange() {
+      // Reset to first page when changing items per page
+      this.currentPage = 1;
+      this.loadStudents();
     },
   },
   async mounted() {
+    // Initialize from URL query parameters if they exist
+    const { query } = this.$route
+    
+    // Set initial state from URL query
+    if (query.page) this.currentPage = parseInt(query.page) || 1
+    if (query.perPage) this.perPage = parseInt(query.perPage) || 10
+    if (query.section) this.filters.section = query.section
+    if (query.search) this.searchTerm = query.search
+    if (query.sort) this.sortOption = query.sort
+    
+    // Load initial data
     await Promise.all([
       this.loadSections(),
       this.loadStudents()
     ])
+  },
+  
+  // Watch for route changes to handle back/forward navigation
+  watch: {
+    '$route.query': {
+      handler(query) {
+        // Only reload if the query actually changed
+        if (JSON.stringify(query) !== JSON.stringify(this.$route.query)) {
+          this.loadStudents()
+        }
+      },
+      deep: true,
+      immediate: true
+    },
+    // Keep existing watchers
+    sortOption() {
+      this.currentPage = 1
+      this.loadStudents()
+    },
+    
+    searchTerm() {
+      this.currentPage = 1
+      this.loadStudents()
+    },
+    
+    // Watch filters for changes
+    filters: {
+      handler() {
+        this.currentPage = 1 // Reset to first page when filters change
+        this.loadStudents()
+      },
+      deep: true
+    }
   }
 }
 </script>

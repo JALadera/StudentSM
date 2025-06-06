@@ -21,12 +21,19 @@ class GradeWeightSerializer(serializers.ModelSerializer):
 
 class SubjectSerializer(serializers.ModelSerializer):
     prerequisites = PrerequisiteSerializer(many=True, read_only=True)
-    subject_grade_weights = GradeWeightSerializer(required=False)  # Updated related_name
+    subject_grade_weights = GradeWeightSerializer(required=False)
+    enrollment_count = serializers.SerializerMethodField()
     
     class Meta:
         model = Subject
         fields = ['id', 'code', 'name', 'description', 'units', 
-                 'year_level', 'prerequisites', 'subject_grade_weights']
+                 'year_level', 'prerequisites', 'subject_grade_weights', 'enrollment_count']
+
+    def get_enrollment_count(self, obj):
+        # Get all active enrollments for this subject
+        enrollments = obj.enrollments.filter(is_active=True)
+        # Count unique students (since a student can be enrolled in multiple sections)
+        return enrollments.values('student').distinct().count()
 
     def create(self, validated_data):
         prerequisites = self.initial_data.get('prerequisites', [])

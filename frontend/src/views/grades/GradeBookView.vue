@@ -4,8 +4,20 @@
     <div class="max-w-7xl mx-auto">
       <!-- Header -->
       <div class="flex justify-between items-center mb-6">
-        <h1 class="text-3xl font-bold text-brand">Grade Book</h1>
-        <div class="flex space-x-4">
+        <div>
+          <h1 class="text-3xl font-bold text-brand">Grade Book</h1>
+          <router-link 
+            v-if="selectedSubject"
+            :to="{ name: 'SubjectDetail', params: { id: selectedSubject } }"
+            class="text-blue-400 hover:text-blue-300 text-sm flex items-center mt-1"
+          >
+            <span>View Subject Details</span>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+          </router-link>
+        </div>
+        <div v-if="selectedSection && selectedSubject" class="flex space-x-4">
           <button
             @click="showAddAssessmentModal = true"
             class="btn btn-primary"
@@ -18,6 +30,9 @@
           >
             Export Grades
           </button>
+        </div>
+        <div v-else class="text-muted text-sm">
+          Please select both section and subject to manage grades
         </div>
       </div>
 
@@ -238,13 +253,7 @@ export default {
       if (!this.selectedSubject) return
       
       try {
-        const [activities, quizzes, exams] = await Promise.all([
-          gradesService.getActivities(this.selectedSubject),
-          gradesService.getQuizzes(this.selectedSubject),
-          gradesService.getExams(this.selectedSubject)
-        ])
-        
-        this.assessments = [...activities, ...quizzes, ...exams]
+        this.assessments = await gradesService.getAssessments(this.selectedSubject)
       } catch (error) {
         console.error('Error loading assessments:', error)
       }
@@ -278,13 +287,20 @@ export default {
           exam: gradesService.createExam
         }[this.assessmentForm.assessment_type]
         
-        await serviceMethod(this.assessmentForm)
+        // Include the selected subject in the form data
+        const formData = {
+          ...this.assessmentForm,
+          subject: this.selectedSubject,
+          max_score: parseFloat(this.assessmentForm.max_score)
+        }
+        
+        await serviceMethod(formData)
         await this.loadAssessments()
         await this.loadGradeBook()
         this.closeAssessmentModal()
       } catch (error) {
         console.error('Error saving assessment:', error)
-        alert('Failed to save assessment')
+        alert(error.response?.data?.detail || 'Failed to save assessment')
       } finally {
         this.saving = false
       }

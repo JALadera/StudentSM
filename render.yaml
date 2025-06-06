@@ -2,15 +2,24 @@ services:
   - type: web
     name: studentms-backend
     env: python
-    rootDir: backend
-    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
-    startCommand: gunicorn config.wsgi:application
+    buildCommand: "bash build.sh"
+    startCommand: "gunicorn config.wsgi:application --bind 0.0.0.0:$PORT"
     envVars:
-      - key: DJANGO_DEBUG
-        value: "False"
       - key: DJANGO_SECRET_KEY
-        generateValue: true
+        fromServices:
+          - name: studentms-backend
+            envVar: DJANGO_SECRET_KEY
       - key: ALLOWED_HOSTS
-        value: ".onrender.com"
-      - key: CORS_ALLOWED_ORIGINS
-        value: "https://studentms-frontend.vercel.app"
+        value: "studentms-backend.onrender.com,127.0.0.1"
+    healthCheckPath: /api/health/
+    port: 8000
+  - type: web
+    name: studentms-frontend
+    env: node
+    buildCommand: "npm run build"
+    startCommand: "npm run preview -- --port $PORT"
+    envVars:
+      - key: VITE_API_URL
+        value: "https://studentms-backend.onrender.com/api"
+    healthCheckPath: /
+    port: 5173

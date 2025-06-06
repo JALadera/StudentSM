@@ -57,6 +57,7 @@
                 <th class="px-6 py-3 text-left text-xs font-medium text-muted uppercase">Code</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-muted uppercase">Name</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-muted uppercase">Units</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-muted uppercase">Enrolled</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-muted uppercase">Prerequisites</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-muted uppercase">Actions</th>
               </tr>
@@ -67,6 +68,9 @@
                 <td class="px-6 py-4 whitespace-nowrap text-base">{{ subject.code }}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-base">{{ subject.name }}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-base">{{ subject.units }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-base">
+                  {{ subject.enrollment_count || 0 }}
+                </td>
                 <td class="px-6 py-4 whitespace-nowrap text-base">
                   <span v-if="subject.prerequisites?.length > 0">
                     {{ formatPrerequisites(subject.prerequisites) }}

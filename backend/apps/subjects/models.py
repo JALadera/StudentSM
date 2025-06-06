@@ -20,16 +20,40 @@ class Subject(models.Model):
         ordering = ['year_level', 'code']
 
 class Enrollment(models.Model):
-    student = models.ForeignKey(Student, on_delete=models.CASCADE)
-    subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='enrollments')
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='enrollments')
     enrollment_date = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
 
     class Meta:
-        unique_together = ['student', 'subject']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['student', 'subject'], 
+                name='unique_student_subject',
+                condition=models.Q(is_active=True)
+            )
+        ]
+        indexes = [
+            models.Index(fields=['student', 'subject']),
+            models.Index(fields=['is_active']),
+        ]
+
+    def clean(self):
+        # Check if an active enrollment already exists for this student and subject
+        if self.is_active and Enrollment.objects.filter(
+            student=self.student,
+            subject=self.subject,
+            is_active=True
+        ).exclude(pk=self.pk).exists():
+            raise ValidationError('Student is already enrolled in this subject')
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.student.full_name} - {self.subject.code}"
+        status = "active" if self.is_active else "inactive"
+        return f"{self.student.full_name} - {self.subject.code} ({status})"
 
 class GradeWeight(models.Model):
     subject = models.OneToOneField(

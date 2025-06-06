@@ -1,20 +1,19 @@
 <template>
-  <div class="fixed inset-0 bg-black bg-opacity-75 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-20 mx-auto p-6 border w-[800px] shadow-lg rounded-lg bg-[#1a1a1a] border-gray-800">
-      <h2 class="text-xl font-semibold text-red-600 mb-6">Bulk Register Students</h2>
-      
-      <div class="space-y-4 mb-6">
-        <div v-for="(student, index) in students" :key="index" class="p-4 bg-[#141414] rounded-lg">
-          <div class="grid grid-cols-3 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-400 mb-1">Student ID *</label>
-              <input
-                v-model="student.student_id"
-                type="text"
-                required
-                class="w-full bg-[#1a1a1a] border-gray-800 text-gray-200 rounded-md"
-              />
-            </div>
+  <div class="relative top-20 mx-auto p-6 border w-[800px] shadow-lg rounded-lg bg-[#1a1a1a] border-gray-800">
+    <h2 class="text-xl font-semibold text-red-600 mb-6">Bulk Register Students</h2>
+    
+    <div class="space-y-4 mb-6">
+      <div v-for="(student, index) in students" :key="index" class="p-4 bg-[#141414] rounded-lg">
+        <div class="grid grid-cols-3 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-400 mb-1">Student ID *</label>
+            <input
+              v-model="student.student_id"
+              type="text"
+              required
+              class="w-full bg-[#1a1a1a] border-gray-800 text-gray-200 rounded-md"
+            />
+          </div>
             <div>
               <label class="block text-sm font-medium text-gray-400 mb-1">First Name *</label>
               <input
@@ -73,7 +72,6 @@
               Remove
             </button>
           </div>
-        </div>
       </div>
 
       <!-- Error Display -->

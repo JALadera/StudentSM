@@ -253,32 +253,96 @@ def student_grades(request, student_id):
 @permission_classes([IsAuthenticated])
 def get_student_grades(request, student_id):
     try:
+        # Verify the student exists
         student = get_object_or_404(Student, pk=student_id)
-        grades = Grade.objects.filter(student=student)\
-            .select_related('assessment', 'assessment__subject')\
-            .order_by('assessment__date')
-            
-        data = []
-        for grade in grades:
-            data.append({
-                'id': grade.id,
-                'subject': {
-                    'id': grade.assessment.subject.id,
-                    'code': grade.assessment.subject.code,
-                    'name': grade.assessment.subject.name
-                },
-                'assessment': {
-                    'id': grade.assessment.id,
-                    'name': grade.assessment.name,
-                    'type': grade.assessment.assessment_type,
-                    'max_score': grade.assessment.max_score,
-                    'date': grade.assessment.date
-                },
-                'score': grade.score,
-                'status': get_grade_status(grade.score, grade.assessment.max_score)
-            })
-            
-        return Response(data)
+        
+        # Get all active enrollments for this student
+        enrollments = Enrollment.objects.filter(
+            student=student,
+            is_active=True
+        ).select_related('subject')
+        
+        if not enrollments.exists():
+            return Response([], status=status.HTTP_200_OK)
+        
+        # Calculate final grade for each subject
+        grades_data = []
+        for enrollment in enrollments:
+            try:
+                subject = enrollment.subject
+                if not subject:
+                    continue
+                
+                # Get all grades for this student in this subject
+                grades = Grade.objects.filter(
+                    student=student,
+                    assessment__subject=subject
+                ).select_related('assessment')
+                
+                if not grades.exists():
+                    # Add subject with no grades
+                    grades_data.append({
+                        'subject_code': subject.code,
+                        'subject_name': subject.name,
+                        'final_grade': 0,
+                        'status': 'No grades yet'
+                    })
+                    continue
+                
+                # Calculate weighted average
+                total_weighted_score = 0
+                total_weight = 0
+                
+                for grade in grades:
+                    try:
+                        assessment = grade.assessment
+                        if not assessment:
+                            continue
+                            
+                        weight = 0
+                        
+                        # Determine weight based on assessment type
+                        if assessment.assessment_type == 'activity':
+                            weight = 0.3  # 30% weight for activities
+                        elif assessment.assessment_type == 'quiz':
+                            weight = 0.3  # 30% weight for quizzes
+                        elif assessment.assessment_type == 'exam':
+                            weight = 0.4  # 40% weight for exams
+                        
+                        # Skip if weight is 0 or max_score is 0 to avoid division by zero
+                        if weight == 0 or not assessment.max_score:
+                            continue
+                            
+                        # Calculate weighted score (normalized to percentage)
+                        normalized_score = (float(grade.score) / float(assessment.max_score)) * 100
+                        total_weighted_score += normalized_score * weight
+                        total_weight += weight
+                        
+                    except (AttributeError, TypeError, ValueError) as e:
+                        print(f"Error processing grade {grade.id}: {str(e)}")
+                        continue
+                
+                # Calculate final grade (ensure we don't divide by zero)
+                if total_weight > 0:
+                    final_grade = round(total_weighted_score / total_weight, 2)
+                    status_msg = get_grade_status(final_grade, 100)
+                else:
+                    final_grade = 0
+                    status_msg = 'No valid grades'
+                
+                # Add to results
+                grades_data.append({
+                    'subject_code': subject.code,
+                    'subject_name': subject.name,
+                    'final_grade': final_grade,
+                    'status': status_msg
+                })
+                
+            except Exception as e:
+                print(f"Error processing enrollment {enrollment.id}: {str(e)}")
+                continue
+        
+        return Response(grades_data, status=status.HTTP_200_OK)
         
     except Student.DoesNotExist:
         return Response(
@@ -286,19 +350,34 @@ def get_student_grades(request, student_id):
             status=status.HTTP_404_NOT_FOUND
         )
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return Response(
-            {'error': str(e)}, 
+            {'error': 'An error occurred while processing grades'}, 
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
-def get_grade_status(score, max_score):
-    percentage = (score / max_score) * 100
-    if percentage >= 90:
-        return 'Excellent'
-    elif percentage >= 80:
-        return 'Good'
-    elif percentage >= 75:
-        return 'Passing'
+def get_grade_status(score, max_score=100):
+    """
+    Determine the grade status based on score and max_score.
+    If max_score is 100, it's already a percentage.
+    """
+    try:
+        if max_score != 100:
+            percentage = (float(score) / float(max_score)) * 100
+        else:
+            percentage = float(score)
+            
+        if percentage >= 90:
+            return 'Excellent'
+        elif percentage >= 80:
+            return 'Good'
+        elif percentage >= 75:
+            return 'Passing'
+        else:
+            return 'Needs Improvement'
+    except (TypeError, ValueError, ZeroDivisionError):
+        return 'N/A'
     return 'Failed'
 
 @api_view(['POST'])

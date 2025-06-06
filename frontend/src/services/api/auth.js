@@ -1,65 +1,25 @@
 // frontend/src/services/api/auth.js
-import createAxiosInstance, { API_BASE_URL } from './axios'
-
-const authAPI = createAxiosInstance(`${API_BASE_URL}/auth`)
-
-// Request interceptor to add token
-authAPI.interceptors.request.use((config) => {
-  const token = localStorage.getItem("access_token")
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
-  return config
-})
-
-// Response interceptor to handle token refresh
-authAPI.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    if (error.response?.status === 401) {
-      const refreshToken = localStorage.getItem("refresh_token")
-      if (refreshToken) {
-        try {
-          // Get new tokens
-          const response = await axios.post(`${API_BASE_URL}/auth/refresh/`, {
-            refresh: refreshToken,
-          })
-
-          // Update stored tokens
-          localStorage.setItem("access_token", response.data.access)
-          if (response.data.refresh) {
-            localStorage.setItem("refresh_token", response.data.refresh)
-          }
-
-          // Retry the original request with new token
-          error.config.headers.Authorization = `Bearer ${response.data.access}`
-          return authAPI.request(error.config)
-        } catch (refreshError) {
-          // Clear tokens and redirect to login
-          localStorage.removeItem("access_token")
-          localStorage.removeItem("refresh_token") 
-          localStorage.removeItem("user")
-          window.location.href = "/login"
-        }
-      }
-    }
-    return Promise.reject(error)
-  },
-)
+import axios from './axios'
 
 export const authService = {
   async login(credentials) {
     try {
-      const response = await authAPI.post("/login/", credentials)
+      console.log('Attempting login with credentials:', credentials)
+      const response = await axios.post("/auth/login/", credentials)
+      console.log('Login response:', response.data)
+      
       const { access, refresh, user } = response.data
       
       // Store tokens and user data
+      console.log('Storing tokens in localStorage')
       localStorage.setItem("access_token", access)
       localStorage.setItem("refresh_token", refresh)
       localStorage.setItem("user", JSON.stringify(user))
       
+      console.log('Login successful, tokens stored')
       return response.data
     } catch (error) {
+      console.error('Login error:', error)
       if (error.response?.status === 401) {
         throw new Error('Invalid credentials')
       }
@@ -71,7 +31,7 @@ export const authService = {
     try {
       const refresh_token = localStorage.getItem('refresh_token')
       if (refresh_token) {
-        await authAPI.post('/blacklist/', { refresh_token })
+        await axios.post('/auth/logout/', { refresh_token })
       }
     } catch (error) {
       console.error('Error during logout:', error)
@@ -90,8 +50,8 @@ export const authService = {
     }
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/auth/refresh/`, {
-        refresh: refreshToken
+      const response = await axios.post('/auth/refresh/', {
+        refresh: refreshToken,
       })
 
       localStorage.setItem("access_token", response.data.access)
@@ -108,14 +68,24 @@ export const authService = {
   },
 
   async updateProfile(data) {
-    const response = await authAPI.put("/profile/", data)
-    localStorage.setItem("user", JSON.stringify(response.data))
-    return response.data
+    try {
+      const response = await axios.put("/auth/profile/", data)
+      localStorage.setItem("user", JSON.stringify(response.data))
+      return response.data
+    } catch (error) {
+      console.error('Error updating profile:', error)
+      throw error
+    }
   },
 
   async resetPassword(email) {
-    const response = await authAPI.post("/reset-password/", { email })
-    return response.data
+    try {
+      const response = await axios.post("/auth/reset-password/", { email })
+      return response.data
+    } catch (error) {
+      console.error('Error resetting password:', error)
+      throw error
+    }
   },
 
   getCurrentUser() {
@@ -144,10 +114,10 @@ export const authService = {
 
   async register(data) {
     try {
-      const response = await authAPI.post("/register/", {
+      const response = await axios.post("/register/", {
         username: data.username,
         password: data.password,
-        confirm_password: data.confirm_password, // Make sure to include this
+        confirm_password: data.confirm_password, 
         email: data.email,
         first_name: data.first_name,
         last_name: data.last_name,
