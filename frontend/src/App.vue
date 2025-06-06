@@ -5,6 +5,7 @@
     <div class="pt-16"> <!-- Add padding-top to account for fixed navbar -->
       <router-view />
     </div>
+    <Toast />
   </div>
 </template>
 
@@ -14,6 +15,10 @@ import { authService } from '@/services/api/auth.js'
 import { useThemeStore } from '@/stores/theme'
 import { onMounted, watch, computed } from 'vue'
 import { useRoute } from 'vue-router'
+import { useToast } from 'vue-toastification'
+
+// Initialize toast
+const toast = useToast()
 
 const route = useRoute()
 const themeStore = useThemeStore()

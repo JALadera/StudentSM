@@ -192,6 +192,7 @@
 import { gradesService } from '@/services/api/grades.js'
 import { studentsService } from '@/services/api/students.js'
 import { subjectsService } from '@/services/api/subjects.js'
+import { useToast } from 'vue-toastification'
 
 export default {
   name: 'GradeBookView',
@@ -295,12 +296,13 @@ export default {
         }
         
         await serviceMethod(formData)
+        this.toast.success('Assessment created successfully')
         await this.loadAssessments()
         await this.loadGradeBook()
         this.closeAssessmentModal()
       } catch (error) {
         console.error('Error saving assessment:', error)
-        alert(error.response?.data?.detail || 'Failed to save assessment')
+        this.toast.error(error.response?.data?.detail || 'Failed to save assessment')
       } finally {
         this.saving = false
       }
