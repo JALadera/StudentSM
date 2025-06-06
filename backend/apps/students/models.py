@@ -1,6 +1,4 @@
-# backend/apps/students/models.py
 from django.db import models
-from django.db.models import Q
 
 class Section(models.Model):
     name = models.CharField(max_length=50)
@@ -8,12 +6,11 @@ class Section(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        # Convert section name to ordinal number (1 -> 1st, 2 -> 2nd, etc.)
         ordinal = lambda n: "%d%s" % (n, {1: "st", 2: "nd", 3: "rd"}.get(n if n < 20 else n % 10, "th"))
         return f"Year {self.year_level} - {ordinal(int(self.name))} Section"
 
     class Meta:
-        ordering = ['year_level', 'name']  # Order by year level then section number
+        ordering = ['year_level', 'name']
 
 class Student(models.Model):
     student_id = models.CharField(max_length=20, unique=True)

@@ -7,10 +7,10 @@ export const gradesService = {
     try {
       const response = await axios.post("/grades/assessments/", {
         name: data.name,
-        subject: data.subject,  // This should be the subject ID
+        subject: data.subject,  
         max_score: parseFloat(data.max_score),
-        date: data.date || new Date().toISOString().split('T')[0], // Ensure date is in YYYY-MM-DD format
-        assessment_type: data.type || 'activity'  // Default to activity if type not specified
+        date: data.date || new Date().toISOString().split('T')[0],
+        assessment_type: data.type || 'activity'
       });
       return response.data;
     } catch (error) {
@@ -67,7 +67,6 @@ export const gradesService = {
   },
 
   async calculateFinalGrades(sectionId) {
-    // This would be implemented based on your grading system
     const response = await axios.get(`/grades/final-grades/${sectionId}/`)
     return response.data
   },
@@ -100,13 +99,11 @@ export const gradesService = {
       const response = await axios.get(`/grades/student-grades/${studentId}/`);
       console.log('Grades API response:', response.data);
       
-      // Ensure we have valid data
       if (!Array.isArray(response.data)) {
         console.error('Unexpected response format from grades API:', response.data);
         return [];
       }
       
-      // Transform the response to match the expected format
       const grades = response.data.map(grade => ({
         subject_code: grade.subject_code || '',
         subject_name: grade.subject_name || 'Unknown Subject',
@@ -122,7 +119,7 @@ export const gradesService = {
         console.error('Response data:', error.response.data);
         console.error('Response status:', error.response.status);
       }
-      return []; // Return empty array instead of throwing to prevent UI breakage
+      return [];
     }
   },
 

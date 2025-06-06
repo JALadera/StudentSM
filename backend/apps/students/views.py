@@ -1,12 +1,12 @@
-# backend/apps/students/views.py
-from rest_framework import status, viewsets
+from rest_framework import status, viewsets, filters
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.pagination import PageNumberPagination
 from django.shortcuts import get_object_or_404
+from django.db.models import Q
 from .models import Student, Section
 from .serializers import StudentSerializer, StudentCreateSerializer, BulkStudentSerializer, SectionSerializer
-from rest_framework.pagination import PageNumberPagination
 
 class StudentPagination(PageNumberPagination):
     page_size = 10
@@ -24,20 +24,26 @@ class StudentViewSet(viewsets.ModelViewSet):
     search_fields = ['first_name', 'last_name', 'student_id', 'email']
     ordering_fields = ['last_name', 'first_name', 'student_id', 'email']
     ordering = ['last_name', 'first_name']
-    
+
     def get_queryset(self):
         queryset = super().get_queryset()
-        
-        # Apply section filter if provided
-        section = self.request.query_params.get('section')
-        if section:
-            queryset = queryset.filter(section_id=section)
-            
-        # Apply active status filter if provided
+        section_id = self.request.query_params.get('section_id')
+        if section_id:
+            queryset = queryset.filter(section_id=section_id)
+
+        search_query = self.request.query_params.get('search')
+        if search_query:
+            queryset = queryset.filter(
+                Q(first_name__icontains=search_query) |
+                Q(last_name__icontains=search_query) |
+                Q(student_id__icontains=search_query) |
+                Q(email__icontains=search_query)
+            )
+
         is_active = self.request.query_params.get('is_active')
         if is_active is not None:
             queryset = queryset.filter(is_active=is_active.lower() == 'true')
-            
+
         return queryset
 
 @api_view(['GET', 'POST'])
@@ -48,9 +54,10 @@ def student_list_create(request):
         search = request.query_params.get('search', '')
         section = request.query_params.get('section')
         ordering = request.query_params.get('ordering', 'last_name,first_name')
-        
+
         # Start with base queryset
         students = Student.objects.all().select_related('section')
+
         
         # Apply filters
         if search:

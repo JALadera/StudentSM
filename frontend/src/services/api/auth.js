@@ -36,7 +36,6 @@ export const authService = {
     } catch (error) {
       console.error('Error during logout:', error)
     } finally {
-      // Clear local storage regardless of API success
       localStorage.removeItem('access_token')
       localStorage.removeItem('refresh_token')
       localStorage.removeItem('user')

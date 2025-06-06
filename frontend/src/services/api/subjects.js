@@ -106,11 +106,10 @@ export const subjectsService = {
           'X-Requested-With': 'XMLHttpRequest'
         },
         validateStatus: function (status) {
-          return status < 500 // Resolve only if the status code is less than 500
+          return status < 500
         }
       }
       
-      // Ensure we're sending a proper JSON string
       const response = await axios.post(
         '/subjects/enroll/', 
         JSON.stringify(enrollmentData),
@@ -143,7 +142,6 @@ export const subjectsService = {
 
   async unenrollStudent(enrollmentId) {
     try {
-      // Send a POST request to unenroll the student
       const response = await axios.post(`/subjects/enrollments/${enrollmentId}/`);
       return response.data;
     } catch (error) {
@@ -166,7 +164,6 @@ export const subjectsService = {
 
   async updateGradeWeights(subjectId, weights) {
     try {
-      // Convert weights to numbers to ensure proper format
       const formattedWeights = {
         activity_weight: parseFloat(weights.activity_weight),
         quiz_weight: parseFloat(weights.quiz_weight),

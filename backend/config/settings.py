@@ -1,23 +1,16 @@
-# backend/config/settings.py
 import os
 from pathlib import Path
 from datetime import timedelta
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'your-development-key')
-
-# SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DJANGO_DEBUG', 'True') == 'True'
-
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,.onrender.com').split(',')
 
-# CORS settings
 CORS_ALLOWED_ORIGINS = [
     "https://studentms-frontend.vercel.app",
-    "http://localhost:5173"  # Keep for local development
+    "http://localhost:5173"
 ]
 
 CORS_ALLOW_CREDENTIALS = True

@@ -58,7 +58,6 @@ export const studentsService = {
     } catch (error) {
       console.error('Error registering student:', error)
       if (error.response) {
-        // Log the detailed error response from the server
         console.error('Error response data:', error.response.data);
         console.error('Error response status:', error.response.status);
       }
@@ -78,7 +77,6 @@ export const studentsService = {
 
   async getStudentList(params = {}) {
     try {
-      // Map frontend params to backend params
       const queryParams = {
         ...params,
         page: params.page || 1,
@@ -88,18 +86,14 @@ export const studentsService = {
         section: params.section || ''
       }
       
-      // Remove undefined or empty params
       Object.keys(queryParams).forEach(key => {
         if (queryParams[key] === '' || queryParams[key] === undefined) {
           delete queryParams[key];
         }
       });
       
-      console.log('Fetching students with params:', queryParams); // Debug log
-      
       const response = await axios.get('/students/', { params: queryParams });
       
-      // The backend now always returns paginated responses
       return {
         results: response.data.results || [],
         count: response.data.count || 0,
@@ -108,7 +102,6 @@ export const studentsService = {
       };
     } catch (error) {
       console.error('Error fetching students:', error);
-      // Return empty results on error
       return {
         results: [],
         count: 0,
@@ -120,9 +113,7 @@ export const studentsService = {
 
   getStudentDetail: async function(id) {
     try {
-      console.log('Fetching student details for ID:', id)
       const response = await axios.get(`/students/${id}/`)
-      console.log('API Response:', response.data)
       return response.data
     } catch (error) {
       console.error('Error fetching student details:', error)
@@ -165,7 +156,6 @@ export const studentsService = {
   async getSections() {
     try {
       const response = await axios.get('/students/sections/')
-      console.log('API Response:', response.data)
       return response.data
     } catch (error) {
       console.error('Error fetching sections:', error)
