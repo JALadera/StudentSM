@@ -32,6 +32,10 @@ export const studentsService = {
     }
   },
 
+  /**
+   * Get all students
+   * @returns {Promise<Array>} List of students
+   */
   async getStudents() {
     try {
       const response = await axios.get('/students/')
@@ -42,12 +46,32 @@ export const studentsService = {
     }
   },
 
-  async getStudent(id) {
+  /**
+   * Get student by database ID
+   * @param {string|number} id - Student database ID
+   * @returns {Promise<Object>} Student data
+   */
+  async getStudentById(id) {
     try {
       const response = await axios.get(`/students/${id}/`)
       return response.data
     } catch (error) {
-      console.error('Error fetching student:', error)
+      console.error('Error fetching student by ID:', error)
+      throw error
+    }
+  },
+
+  /**
+   * Get student by student ID (student number)
+   * @param {string} studentId - Student ID number
+   * @returns {Promise<Object>} Student data
+   */
+  async getStudentByStudentId(studentId) {
+    try {
+      const response = await axios.get(`/students/by-student-id/${studentId}/`)
+      return response.data
+    } catch (error) {
+      console.error('Error fetching student by student ID:', error)
       throw error
     }
   },
@@ -194,7 +218,42 @@ export const studentsService = {
   },
 
   async bulkAssignSection(data) {
-    const response = await axios.post('/students/bulk-assign-section/', data)
-    return response.data
+    return axios.post('/students/bulk-assign-section/', data)
   },
+
+  /**
+   * Get all enrollments for a specific student
+   * @param {string|number} studentId - Student ID
+   * @returns {Promise<Array>} List of enrollments
+   */
+  async getStudentEnrollments(studentId) {
+    try {
+      const response = await axios.get(`/subjects/student-enrollments/${studentId}/`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching student enrollments:', error);
+      throw new Error(error.response?.data?.error || 'Failed to fetch student enrollments');
+    }
+  },
+
+  /**
+   * Get all enrollments with optional filters
+   * Note: This endpoint might not be implemented in the backend
+   * @param {Object} [params] - Query parameters
+   * @returns {Promise<Object>} Paginated list of enrollments
+   */
+  async getEnrollments(params = {}) {
+    try {
+      // This endpoint might need to be implemented in the backend
+      const response = await axios.get('/subjects/enrollments/', { params });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching enrollments:', error);
+      // Return empty array if endpoint doesn't exist
+      if (error.response?.status === 404) {
+        return [];
+      }
+      throw new Error(error.response?.data?.error || 'Failed to fetch enrollments');
+    }
+  }
 }

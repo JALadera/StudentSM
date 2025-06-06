@@ -115,10 +115,15 @@ export const subjectsService = {
 
   async enrollStudent(enrollmentData) {
     try {
-      // Map frontend field names to backend field names
+      // Ensure we have the required fields
+      if (!enrollmentData || (!enrollmentData.subject_id && !enrollmentData.subject) || (!enrollmentData.student_id && !enrollmentData.student)) {
+        throw new Error('Missing required fields: subject and student are required');
+      }
+
+      // Prepare the request data with the exact field names expected by the backend
       const requestData = {
-        subject_id: enrollmentData.subject,
-        student_id: enrollmentData.student // This is now the student_id string
+        subject_id: String(enrollmentData.subject_id || enrollmentData.subject).trim(),
+        student_id: String(enrollmentData.student_id || enrollmentData.student).trim()
       };
       
       console.log('Making enrollment request to /subjects/enroll/')
@@ -132,10 +137,11 @@ export const subjectsService = {
           'Authorization': `Bearer ${localStorage.getItem('access')}`
         },
         validateStatus: function (status) {
-          return status < 500
+          return status < 500 // Reject only if the status code is greater than or equal to 500
         }
       }
       
+      // Make the request with proper error handling
       const response = await axios.post(
         '/subjects/enroll/', 
         requestData,
@@ -149,13 +155,18 @@ export const subjectsService = {
         headers: response.headers
       })
       
+      // Handle error responses
       if (response.status >= 400) {
-        const error = new Error(response.data?.error || 'Enrollment failed')
-        error.response = response
-        throw error
+        const errorMessage = response.data?.error || 
+                          response.data?.detail || 
+                          response.statusText || 
+                          'Enrollment failed';
+        const error = new Error(errorMessage);
+        error.response = response;
+        throw error;
       }
       
-      return response
+      return response.data;
     } catch (error) {
       console.error('Error in enrollStudent:', {
         message: error.message,

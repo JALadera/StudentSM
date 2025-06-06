@@ -425,37 +425,108 @@
       </div>
 
       <!-- Quick Enroll Modal -->
-      <div v-if="showQuickEnrollModal" class="fixed inset-0 bg-black bg-opacity-75 overflow-y-auto h-full w-full z-50">
-        <div class="relative top-20 mx-auto p-6 border w-[500px] shadow-lg rounded-lg bg-[#1a1a1a] border-gray-800">
-          <h3 class="text-xl font-medium text-gray-200 mb-6">Quick Enroll Student</h3>
-          <form @submit.prevent="handleQuickEnroll" class="space-y-4">
+      <div v-if="showQuickEnrollModal" class="fixed inset-0 bg-black bg-opacity-90 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-6 border w-[800px] shadow-lg rounded-lg bg-black border-red-700">
+          <h3 class="text-xl font-medium text-white mb-6">Quick Enroll Student</h3>
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Student List -->
+            <div class="bg-black p-4 rounded-lg border border-red-700">
+              <h4 class="text-md font-medium text-white mb-3">Available Students</h4>
+              <div class="mb-3">
+                <input 
+                  v-model="studentSearch"
+                  type="text" 
+                  class="w-full px-3 py-2 bg-gray-900 border border-red-700 rounded-md text-white placeholder-gray-500"
+                  placeholder="Search students..."
+                  @input="searchStudents"
+                >
+              </div>
+              <div class="max-h-80 overflow-y-auto">
+                <table class="min-w-full">
+                  <thead>
+                    <tr class="text-left text-xs text-red-400 border-b border-red-700">
+                      <th class="pb-2">ID</th>
+                      <th class="pb-2">Name</th>
+                      <th class="pb-2">Course</th>
+                      <th class="pb-2">Year</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr 
+                      v-for="student in filteredStudents" 
+                      :key="student.id"
+                      @click="selectStudent(student)"
+                      class="border-b border-red-900 hover:bg-red-900/20 cursor-pointer transition-colors"
+                      :class="{'bg-red-900/40': selectedStudent?.id === student.id}"
+                    >
+                      <td class="py-2 px-1 text-white">{{ student.student_id }}</td>
+                      <td class="py-2 px-1 text-white">{{ student.last_name }}, {{ student.first_name }}</td>
+                      <td class="py-2 px-1 text-gray-300">{{ student.course || 'N/A' }}</td>
+                      <td class="py-2 px-1 text-gray-300">{{ student.year_level || 'N/A' }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+                <div v-if="filteredStudents.length === 0" class="text-center text-gray-500 py-4">
+                  No students found
+                </div>
+              </div>
+            </div>
+            
+            <!-- Enrollment Form -->
             <div>
-              <label class="block text-sm font-medium text-gray-400">Student ID</label>
-              <input v-model="enrollForm.student_id" type="text" required
-                     class="mt-1 block w-full rounded-md bg-[#141414] border-gray-800 text-gray-200"
-                     placeholder="Enter Student ID"/>
+              <div class="bg-black p-4 rounded-lg mb-4 border border-red-700">
+                <h4 class="text-md font-medium text-white mb-3">Selected Student</h4>
+                <div v-if="selectedStudent" class="space-y-2 text-gray-300">
+                  <p><span class="text-red-400">ID:</span> {{ selectedStudent.student_id }}</p>
+                  <p><span class="text-red-400">Name:</span> {{ selectedStudent.last_name }}, {{ selectedStudent.first_name }}</p>
+                  <p><span class="text-red-400">Course:</span> {{ selectedStudent.course || 'N/A' }}</p>
+                  <p><span class="text-red-400">Year:</span> {{ selectedStudent.year_level || 'N/A' }}</p>
+                </div>
+                <div v-else class="text-gray-500">
+                  Select a student from the list
+                </div>
+              </div>
+              
+              <div class="bg-black p-4 rounded-lg border border-red-700">
+                <h4 class="text-md font-medium text-white mb-3">Select Subject</h4>
+                <select 
+                  v-model="enrollForm.subject_id"
+                  class="w-full px-3 py-2 bg-gray-900 border border-red-700 rounded-md text-white mb-4 focus:ring-2 focus:ring-red-600 focus:border-transparent"
+                  required
+                >
+                  <option value="" class="bg-black">Select a subject</option>
+                  <option v-for="subject in subjects" :key="subject.id" :value="subject.id" class="bg-black">
+                    {{ subject.code }} - {{ subject.name }}
+                  </option>
+                </select>
+                
+                <div v-if="error" class="text-red-500 text-sm mt-2 mb-4 p-2 bg-red-900/30 rounded">
+                  {{ error }}
+                </div>
+                
+                <div class="flex justify-end space-x-3 pt-2">
+                  <button 
+                    type="button" 
+                    @click="closeQuickEnrollModal"
+                    class="px-4 py-2 text-sm font-medium text-gray-300 bg-gray-800 border border-gray-700 rounded-md hover:bg-gray-700 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="button" 
+                    @click="handleQuickEnroll"
+                    class="px-4 py-2 text-sm font-medium text-white bg-red-700 border border-red-600 rounded-md hover:bg-red-600 transition-colors"
+                    :disabled="!selectedStudent || !enrollForm.subject_id || enrolling"
+                    :class="{'opacity-50 cursor-not-allowed': !selectedStudent || !enrollForm.subject_id || enrolling}"
+                  >
+                    <span v-if="!enrolling">Enroll Student</span>
+                    <span v-else>Enrolling...</span>
+                  </button>
+                </div>
+              </div>
             </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-400">Subject</label>
-              <select v-model="enrollForm.subject_id" required
-                      class="mt-1 block w-full rounded-md bg-[#141414] border-gray-800 text-gray-200">
-                <option value="">Select Subject</option>
-                <option v-for="subject in subjects" :key="subject.id" :value="subject.id">
-                  {{ subject.code }} - {{ subject.name }}
-                </option>
-              </select>
-            </div>
-            <div class="flex justify-end space-x-4">
-              <button type="button" @click="closeQuickEnrollModal"
-                      class="px-4 py-2 text-sm font-medium text-gray-400 bg-[#141414] rounded-md hover:bg-[#1f1f1f]">
-                Cancel
-              </button>
-              <button type="submit"
-                      class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700">
-                Enroll
-              </button>
-            </div>
-          </form>
+          </div>
         </div>
       </div>
 
@@ -682,41 +753,6 @@
       </div>
     </div>
 
-    <!-- Quick Enroll Modal -->
-    <div v-if="showQuickEnrollModal" class="fixed inset-0 bg-black bg-opacity-75 overflow-y-auto h-full w-full z-50">
-      <div class="relative top-20 mx-auto p-6 border w-[500px] shadow-lg rounded-lg bg-[#1a1a1a] border-gray-800">
-        <h3 class="text-xl font-medium text-gray-200 mb-6">Quick Enroll Student</h3>
-        <form @submit.prevent="handleQuickEnroll" class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-400">Student ID</label>
-            <input v-model="enrollForm.student_id" type="text" required
-                   class="mt-1 block w-full rounded-md bg-[#141414] border-gray-800 text-gray-200"
-                   placeholder="Enter Student ID"/>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-400">Subject</label>
-            <select v-model="enrollForm.subject_id" required
-                    class="mt-1 block w-full rounded-md bg-[#141414] border-gray-800 text-gray-200">
-              <option value="">Select Subject</option>
-              <option v-for="subject in subjects" :key="subject.id" :value="subject.id">
-                {{ subject.code }} - {{ subject.name }}
-              </option>
-            </select>
-          </div>
-          <div class="flex justify-end space-x-4">
-            <button type="button" @click="closeQuickEnrollModal"
-                    class="px-4 py-2 text-sm font-medium text-gray-400 bg-[#141414] rounded-md hover:bg-[#1f1f1f]">
-              Cancel
-            </button>
-            <button type="submit"
-                    class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700">
-              Enroll
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-
     <!-- Quick Add Subject Modal -->
     <div v-if="showAddSubjectModal" class="fixed inset-0 bg-black bg-opacity-75 overflow-y-auto h-full w-full z-50">
       <div class="relative top-20 mx-auto p-6 border w-[600px] shadow-lg rounded-lg bg-[#1a1a1a] border-gray-800">
@@ -839,7 +875,16 @@ const showSubjectSelectModal = ref(false)
 const showQuickEnrollModal = ref(false)
 const showAddSubjectModal = ref(false)
 
-const selectedSubject = ref('')
+const studentSearch = ref('')
+const allStudents = ref([])
+const filteredStudents = ref([])
+const selectedStudent = ref(null)
+const enrollForm = ref({
+  student_id: '',
+  subject_id: ''
+})
+const enrolling = ref(false)
+
 const studentForm = ref({
   student_id: '',
   first_name: '',
@@ -847,10 +892,6 @@ const studentForm = ref({
   email: '',
   section: '',
   date_of_birth: ''
-})
-const enrollForm = ref({
-  student_id: '',
-  subject_id: ''
 })
 const subjectForm = ref({
   code: '',
@@ -893,6 +934,18 @@ const loadSections = async () => {
     sections.value = await studentsService.getSections()
   } catch (error) {
     console.error('Error loading sections:', error)
+  }
+}
+
+// Load all students for quick enrollment
+const loadAllStudents = async () => {
+  try {
+    const response = await studentsService.getStudents()
+    allStudents.value = response.results || response
+    filteredStudents.value = [...allStudents.value]
+    console.log('Loaded students:', allStudents.value)
+  } catch (error) {
+    console.error('Error loading students:', error)
   }
 }
 
@@ -944,21 +997,19 @@ const handleQuickEnroll = async () => {
     error.value = ''
     
     try {
-        if (!enrollForm.value.student_id || !enrollForm.value.subject_id) {
-            error.value = 'Both student ID and subject are required'
+        if (!selectedStudent.value || !enrollForm.value.subject_id) {
+            error.value = 'Please select both a student and a subject'
             return
         }
 
-        // Trim any whitespace from student ID
-        const studentId = enrollForm.value.student_id.toString().trim()
+        const studentId = selectedStudent.value.student_id || selectedStudent.value.id
         
-        // Get the student's details to get their student_id string
-        const studentDetails = await studentsService.getStudent(studentId)
+        console.log('Enrolling student with ID:', studentId, 'in subject:', enrollForm.value.subject_id)
         
         // Use the correct field names that the backend expects
         await subjectsService.enrollStudent({
-            subject: enrollForm.value.subject_id, 
-            student: studentDetails.student_id
+            subject_id: enrollForm.value.subject_id, 
+            student_id: studentId
         })
         
         await loadStats() // Refresh dashboard stats
@@ -967,8 +1018,33 @@ const handleQuickEnroll = async () => {
     } catch (err) {
         console.error('Error enrolling student:', err)
         error.value = err.response?.data?.error || 'Failed to enroll student. ' + 
-                    (err.response?.data?.detail || '')
+                    (err.response?.data?.detail || err.message || '')
     }
+}
+
+// Search students for quick enrollment
+const searchStudents = () => {
+  if (!studentSearch.value.trim()) {
+    filteredStudents.value = [...allStudents.value]
+    return
+  }
+  
+  const searchTerm = studentSearch.value.toLowerCase()
+  filteredStudents.value = allStudents.value.filter(student => {
+    return (
+      (student.student_id?.toLowerCase().includes(searchTerm)) ||
+      (student.last_name?.toLowerCase().includes(searchTerm)) ||
+      (student.first_name?.toLowerCase().includes(searchTerm)) ||
+      (student.email?.toLowerCase().includes(searchTerm)) ||
+      (student.contact_number?.includes(searchTerm))
+    )
+  })
+}
+
+// Select a student from the list
+const selectStudent = (student) => {
+  selectedStudent.value = student
+  enrollForm.value.student_id = student.student_id || student.id
 }
 
 // Handle subject registration
@@ -1012,9 +1088,16 @@ const closeSubjectSelectModal = () => {
 
 const closeQuickEnrollModal = () => {
   showQuickEnrollModal.value = false
+  selectedStudent.value = null
   enrollForm.value = {
     student_id: '',
     subject_id: ''
+  }
+  studentSearch.value = ''
+  error.value = ''
+  // Reset the filtered students list
+  if (allStudents.value.length > 0) {
+    filteredStudents.value = [...allStudents.value]
   }
 }
 
@@ -1037,10 +1120,12 @@ onMounted(async () => {
     await Promise.all([
       loadStats(),
       loadSections(),
-      loadSubjects()
+      loadSubjects(),
+      loadAllStudents()
     ])
   } catch (error) {
     console.error('Error loading initial data:', error)
+    error.value = 'Failed to load initial data. Please refresh the page.'
   }
 })
 </script>

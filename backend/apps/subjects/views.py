@@ -383,3 +383,31 @@ def update_weights(request, pk):
             {'error': str(e)},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def list_enrollments(request):
+    """
+    List all enrollments with optional filtering.
+    Query parameters:
+    - is_active: Filter by active status (true/false)
+    - subject_id: Filter by subject ID
+    - student_id: Filter by student ID
+    """
+    queryset = Enrollment.objects.all()
+    
+    # Apply filters
+    is_active = request.query_params.get('is_active')
+    if is_active is not None:
+        queryset = queryset.filter(is_active=is_active.lower() == 'true')
+    
+    subject_id = request.query_params.get('subject_id')
+    if subject_id is not None:
+        queryset = queryset.filter(subject_id=subject_id)
+    
+    student_id = request.query_params.get('student_id')
+    if student_id is not None:
+        queryset = queryset.filter(student_id=student_id)
+    
+    serializer = EnrollmentSerializer(queryset, many=True)
+    return Response(serializer.data)

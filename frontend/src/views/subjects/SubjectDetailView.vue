@@ -542,12 +542,18 @@ const enrollStudents = async () => {
     const results = []
     for (const studentId of selectedStudents.value) {
       try {
-        const studentIdNum = Number(studentId)
-        if (isNaN(studentIdNum)) {
-          throw new Error(`Invalid student ID: ${studentId}`)
+        // Find the student in our list to get their student_id
+        const student = allStudents.value.find(s => s.id === studentId)
+        if (!student) {
+          throw new Error(`Student with ID ${studentId} not found in local list`)
         }
         
-        console.log(`Enrolling student ${studentIdNum} in subject ${subjectId}`)
+        const studentIdNum = student.student_id
+        if (!studentIdNum) {
+          throw new Error(`Student ID not found for student ${studentId}`)
+        }
+        
+        console.log(`Enrolling student ${studentIdNum} (DB ID: ${studentId}) in subject ${subjectId}`)
         
         const enrollmentData = {
           student_id: studentIdNum,
