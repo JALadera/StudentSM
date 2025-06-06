@@ -23,13 +23,33 @@ else:
 
 # CORS settings
 CORS_ALLOW_CREDENTIALS = True
+
+# Common CORS settings
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
+
 if DEBUG:
     CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173').split(',')
     CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173').split(',')
 else:
-    CORS_ALLOW_ALL_ORIGINS = True  # Allow all origins in production
-    CORS_ALLOWED_ORIGINS = ['https://studentms-frontend.onrender.com']  # Add your frontend URL
-    CSRF_TRUSTED_ORIGINS = ['https://studentms-frontend.onrender.com']
+    # In production, explicitly allow the Vercel frontend
+    CORS_ALLOWED_ORIGINS = [
+        'https://student-sm.vercel.app',
+        'https://studentms-frontend.onrender.com'
+    ]
+    CSRF_TRUSTED_ORIGINS = [
+        'https://student-sm.vercel.app',
+        'https://studentms-frontend.onrender.com'
+    ]
 
 # Security settings for production
 if not DEBUG:
