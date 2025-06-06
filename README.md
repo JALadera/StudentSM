@@ -14,7 +14,6 @@ A comprehensive Student Management System built with Django REST Framework and V
 ## Prerequisites
 
 - Python 3.9+
-- Node.js 16+
 - PostgreSQL (for production) / SQLite (for development)
 - pip (Python package manager)
 - npm or yarn
@@ -120,13 +119,13 @@ VITE_API_URL=http://localhost:8000/api
 
 ## Deployment
 
-### Backend (Render/Heroku)
+### Backend (Render)
 1. Set up a PostgreSQL database
 2. Configure environment variables
 3. Set up a production WSGI server (Gunicorn/Uvicorn)
 4. Configure static files with WhiteNoise
 
-### Frontend (Vercel/Netlify)
+### Frontend (Vercel)
 1. Set environment variables
 2. Configure build command: `npm run build`
 3. Set output directory: `dist`
