@@ -2,10 +2,12 @@ import os
 import dj_database_url
 from pathlib import Path
 from datetime import timedelta
-from dotenv import load_dotenv
 
-# Load environment variables from .env file
-load_dotenv()
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    print("Warning: python-dotenv not found. Using system environment variables.")
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
