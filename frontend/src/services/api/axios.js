@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const API_BASE_URL = import.meta.env.production.VITE_API_URL
+const API_BASE_URL = import.meta.env.VITE_API_URL
 
 // Create axios instance
 const instance = axios.create({
@@ -46,19 +46,14 @@ instance.interceptors.request.use(
 // Response interceptor - handle errors and logging
 instance.interceptors.response.use(
   (response) => {
-    // Log successful response (only in development)
     if (import.meta.env.DEV) {
-      console.log('[API Response]', {
-        status: response.status,
-        data: response.data
-      })
+
     }
     return response
   },
   async (error) => {
     const originalRequest = error.config
     
-    // Handle token refresh for 401 errors
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true
       
