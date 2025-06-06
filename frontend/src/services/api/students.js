@@ -1,7 +1,37 @@
 // frontend/src/services/api/students.js
-import axios from './axios'
+import axios from './axios';
 
+/**
+ * Students API service
+ * Handles all student-related API calls
+ */
 export const studentsService = {
+  /**
+   * Get student by ID or student_id
+   * @param {string|number} id - Student ID or student_id
+   * @returns {Promise<Object>} Student data
+   */
+  async getStudent(id) {
+    try {
+      // First try by ID
+      const response = await axios.get(`/students/${id}/`);
+      return response.data;
+    } catch (error) {
+      if (error.response?.status === 404) {
+        // If not found by ID, try by student_id
+        try {
+          const response = await axios.get(`/students/by-student-id/${id}/`);
+          return response.data;
+        } catch (innerError) {
+          console.error('Error fetching student by student_id:', innerError);
+          throw new Error(innerError.response?.data?.error || 'Student not found');
+        }
+      }
+      console.error('Error fetching student:', error);
+      throw new Error(error.response?.data?.error || 'Failed to fetch student');
+    }
+  },
+
   async getStudents() {
     try {
       const response = await axios.get('/students/')
