@@ -19,7 +19,13 @@ DEBUG = os.getenv('DJANGO_DEBUG', 'False') == 'True'
 if DEBUG:
     ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 else:
-    ALLOWED_HOSTS = ['*']  # Allow all hosts in production
+    # In production, allow the render.com domain and any subdomains
+    ALLOWED_HOSTS = [
+        'studentms-backend.onrender.com',
+        '.onrender.com',  # Allow any subdomain of onrender.com
+        'localhost',      # For local development
+        '127.0.0.1'       # For local development
+    ]
 
 # CORS settings
 CORS_ALLOW_CREDENTIALS = True
@@ -37,19 +43,25 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
 ]
 
+# CORS and CSRF settings
 if DEBUG:
+    # Development settings
     CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173').split(',')
     CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173').split(',')
 else:
-    # In production, explicitly allow the Vercel frontend
+    # Production settings
     CORS_ALLOWED_ORIGINS = [
         'https://student-sm.vercel.app',
-        'https://studentms-frontend.onrender.com'
+        'https://studentms-frontend.onrender.com',
+        'https://studentms-backend.onrender.com'
     ]
     CSRF_TRUSTED_ORIGINS = [
         'https://student-sm.vercel.app',
-        'https://studentms-frontend.onrender.com'
+        'https://studentms-frontend.onrender.com',
+        'https://studentms-backend.onrender.com'
     ]
+    CORS_ALLOW_ALL_ORIGINS = False  # Be explicit about allowed origins
+    CORS_ORIGIN_ALLOW_ALL = False   # Be explicit about allowed origins
 
 # Security settings for production
 if not DEBUG:
