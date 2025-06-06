@@ -1,6 +1,7 @@
 import axios from 'axios'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL
+console.log('API Base URL:', API_BASE_URL)
 
 // Create axios instance
 const instance = axios.create({
@@ -10,35 +11,36 @@ const instance = axios.create({
     'Accept': 'application/json'
   },
   withCredentials: true,
-  timeout: 30000 // 30 second timeout
+  timeout: 30000
 })
 
 // Request interceptor - add auth token and logging
 instance.interceptors.request.use(
   (config) => {
+    console.log(`[${new Date().toISOString()}] Making request to:`, config.url)
     const token = localStorage.getItem('access_token')
-    console.log('Axios request interceptor - token from localStorage:', token ? 'Token found' : 'No token found')
     
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
-      console.log('Added Authorization header to request')
     } else {
       console.warn('No access token found in localStorage')
     }
     
-    // Log request details (only in development)
-    if (import.meta.env.DEV) {
-      console.log('[API Request]', {
-        method: config.method,
-        url: config.url,
-        data: config.data,
-        headers: { ...config.headers, Authorization: 'Bearer [REDACTED]' } // Don't log the actual token
-      })
+    // Log request details (without sensitive data)
+    const logConfig = {
+      method: config.method,
+      url: config.url,
+      headers: {
+        ...config.headers,
+        Authorization: config.headers.Authorization ? 'Bearer [REDACTED]' : undefined
+      }
     }
+    console.log('Request config:', logConfig)
+    
     return config
   },
   (error) => {
-    console.error('[API Request Error]', error)
+    console.error('Request error:', error)
     return Promise.reject(error)
   }
 )
@@ -46,15 +48,28 @@ instance.interceptors.request.use(
 // Response interceptor - handle errors and logging
 instance.interceptors.response.use(
   (response) => {
-    if (import.meta.env.DEV) {
-
-    }
+    console.log(`[${new Date().toISOString()}] Response from:`, response.config.url, 'Status:', response.status)
     return response
   },
   async (error) => {
     const originalRequest = error.config
     
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Log the error
+    if (error.response) {
+      console.error('Response error:', {
+        status: error.response.status,
+        statusText: error.response.statusText,
+        url: originalRequest?.url,
+        data: error.response.data
+      })
+    } else if (error.request) {
+      console.error('No response received:', error.request)
+    } else {
+      console.error('Request setup error:', error.message)
+    }
+    
+    // Handle 401 Unauthorized (token refresh)
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
       originalRequest._retry = true
       
       try {

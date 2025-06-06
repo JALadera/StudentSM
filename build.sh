@@ -1,7 +1,16 @@
 #!/bin/bash
-set -o errexit
+set -e  # Exit on error
+
 cd backend
+
+echo "=== Installing Python dependencies ==="
 pip install -r requirements.txt
-python manage.py makemigrations
+
+echo "=== Applying database migrations ==="
+python manage.py makemigrations || echo "No new migrations to apply"
 python manage.py migrate
-python manage.py collectstatic --no-input
+
+echo "=== Collecting static files ==="
+python manage.py collectstatic --noinput
+
+echo "=== Build completed successfully ==="
