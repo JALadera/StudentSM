@@ -48,7 +48,32 @@ class SubjectSerializer(serializers.ModelSerializer):
         return instance
 
     def update(self, instance, validated_data):
-        prerequisites = self.initial_data.get('prerequisites', [])
+        # Get prerequisites from initial_data if provided, otherwise keep existing ones
+        prerequisites = self.initial_data.get('prerequisites', None)
+        
+        # Update all fields except prerequisites
+        instance.code = validated_data.get('code', instance.code)
+        instance.name = validated_data.get('name', instance.name)
+        instance.description = validated_data.get('description', instance.description)
+        instance.units = validated_data.get('units', instance.units)
+        instance.year_level = validated_data.get('year_level', instance.year_level)
+        
+        # Save the instance first
+        instance.save()
+        
+        # Update prerequisites if they were provided in the request
+        if prerequisites is not None:
+            instance.prerequisites.set(prerequisites)
+            
+        # Handle grade weights if provided
+        weights_data = validated_data.pop('subject_grade_weights', None)
+        if weights_data:
+            weights, _ = GradeWeight.objects.get_or_create(subject=instance)
+            for attr, value in weights_data.items():
+                setattr(weights, attr, value)
+            weights.save()
+            
+        return instance
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()

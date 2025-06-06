@@ -61,6 +61,9 @@ urlpatterns = [
     path('bulk-assign-section/', views.bulk_assign_section, name='bulk-assign-section'),
     path('<int:pk>/section/', views.assign_to_section, name='assign-to-section'),
     
+    # Student by student_id (not primary key)
+    path('by-student-id/<str:student_id>/', views.student_by_student_id, name='student-by-student-id'),
+    
     # Include router URLs last to avoid conflicts
     path('', include(router.urls)),
 ]

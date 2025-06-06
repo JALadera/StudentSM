@@ -7,16 +7,35 @@ export const subjectsService = {
       return response.data
     } catch (error) {
       console.error('Error fetching all subjects:', error)
-      throw error
+      throw new Error(error.response?.data?.error || 'Failed to fetch all subjects')
     }
   },
+  /**
+   *
+   * @returns {Promise<Array>} 
+   */
   async getSubjectList() {
     try {
-      const response = await axios.get('/subjects/')
-      return response.data
+      const response = await axios.get('/subjects/');
+      return response.data;
     } catch (error) {
-      console.error('Error fetching subjects:', error)
-      throw error
+      console.error('Error fetching subjects:', error);
+      throw new Error(error.response?.data?.error || 'Failed to fetch subjects');
+    }
+  },
+  
+  /**
+   * Get subject by ID
+   * @param {string|number} id - Subject ID
+   * @returns {Promise<Object>} Subject data
+   */
+  async getSubjectDetail(id) {
+    try {
+      const response = await axios.get(`/subjects/${id}/`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching subject ${id}:`, error);
+      throw new Error(error.response?.data?.error || 'Failed to fetch subject');
     }
   },
 
@@ -96,14 +115,21 @@ export const subjectsService = {
 
   async enrollStudent(enrollmentData) {
     try {
+      // Map frontend field names to backend field names
+      const requestData = {
+        subject_id: enrollmentData.subject,
+        student_id: enrollmentData.student // This is now the student_id string
+      };
+      
       console.log('Making enrollment request to /subjects/enroll/')
-      console.log('Request data:', JSON.stringify(enrollmentData, null, 2))
+      console.log('Request data:', JSON.stringify(requestData, null, 2))
       
       const config = {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest'
+          'X-Requested-With': 'XMLHttpRequest',
+          'Authorization': `Bearer ${localStorage.getItem('access')}`
         },
         validateStatus: function (status) {
           return status < 500
@@ -112,7 +138,7 @@ export const subjectsService = {
       
       const response = await axios.post(
         '/subjects/enroll/', 
-        JSON.stringify(enrollmentData),
+        requestData,
         config
       )
       
@@ -152,15 +178,7 @@ export const subjectsService = {
 
 
 
-  async getStudentEnrollments(studentId) {
-    try {
-      const response = await axios.get(`/subjects/student-enrollments/${studentId}/`)
-      return response.data
-    } catch (error) {
-      console.error('Error fetching student enrollments:', error)
-      throw error
-    }
-  },
+
 
   async updateGradeWeights(subjectId, weights) {
     try {

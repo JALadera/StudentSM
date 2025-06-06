@@ -13,18 +13,32 @@ class Section(models.Model):
         ordering = ['year_level', 'name']
 
 class Student(models.Model):
-    student_id = models.CharField(max_length=20, unique=True)
-    first_name = models.CharField(max_length=50)
-    last_name = models.CharField(max_length=50)
-    email = models.EmailField(unique=True)
-    phone = models.CharField(max_length=15, blank=True)
+    student_id = models.CharField(max_length=20, unique=True, db_index=True)
+    first_name = models.CharField(max_length=50, db_index=True)
+    last_name = models.CharField(max_length=50, db_index=True)
+    email = models.EmailField(unique=True, db_index=True)
+    phone = models.CharField(max_length=15, blank=True, db_index=True)
     date_of_birth = models.DateField()
     address = models.TextField(blank=True)
-    section = models.ForeignKey(Section, on_delete=models.SET_NULL, null=True, blank=True,related_name='students')
-    enrollment_date = models.DateField(auto_now_add=True)
-    is_active = models.BooleanField(default=True)
+    section = models.ForeignKey(
+        Section, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name='students',
+        db_index=True
+    )
+    enrollment_date = models.DateField(auto_now_add=True, db_index=True)
+    is_active = models.BooleanField(default=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['last_name', 'first_name'], name='name_idx'),
+            models.Index(fields=['is_active', 'section'], name='active_section_idx'),
+        ]
+        ordering = ['last_name', 'first_name']
 
     def __str__(self):
         return f"{self.student_id} - {self.first_name} {self.last_name}"

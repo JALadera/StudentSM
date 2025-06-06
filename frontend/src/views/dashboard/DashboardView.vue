@@ -806,8 +806,8 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { gradesService } from '@/services/api/grades'
 import { studentsService } from '@/services/api/students'
+import { gradesService } from '@/services/api/grades'
 import { subjectsService } from '@/services/api/subjects'
 import BulkRegisterModal from '@/components/students/BulkRegisterModal.vue'
 import BulkSectionWizard from '@/components/students/BulkSectionWizard.vue'
@@ -951,16 +951,23 @@ const handleQuickEnroll = async () => {
 
         // Trim any whitespace from student ID
         const studentId = enrollForm.value.student_id.toString().trim()
+        
+        // Get the student's details to get their student_id string
+        const studentDetails = await studentsService.getStudent(studentId)
+        
+        // Use the correct field names that the backend expects
         await subjectsService.enrollStudent({
-            subject_id: enrollForm.value.subject_id, 
-            student_id: studentId
+            subject: enrollForm.value.subject_id, 
+            student: studentDetails.student_id
         })
+        
         await loadStats() // Refresh dashboard stats
         closeQuickEnrollModal()
         alert('Student enrolled successfully')
     } catch (err) {
         console.error('Error enrolling student:', err)
-        error.value = err.response?.data?.error || 'Failed to enroll student'
+        error.value = err.response?.data?.error || 'Failed to enroll student. ' + 
+                    (err.response?.data?.detail || '')
     }
 }
 

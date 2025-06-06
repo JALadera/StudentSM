@@ -51,68 +51,134 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { subjectsService } from '@/services/api/subjects'
+import { ref, onMounted, computed, watch } from 'vue';
+import { useToast } from 'vue-toastification';
+import axios from 'axios'
+import { subjectsService } from '@/services/api/subjects';
+import { studentsService } from '@/services/api/students';
 
 const props = defineProps({
-  show: Boolean,
   studentId: {
-    type: [Number, String],
+    type: [String, Number],
     required: true
   },
-  yearLevel: {
-    type: Number,
-    required: true
+  show: {
+    type: Boolean,
+    default: false
   }
-})
+});
 
-const emit = defineEmits(['close', 'enrolled'])
+const emit = defineEmits(['close', 'enrolled']);
 
-const loading = ref(false)
-const error = ref('')
-const availableSubjects = ref([])
-const selectedSubjects = ref([])
+const subjects = ref([]);
+const selectedSubjects = ref([]);
+const loading = ref(false);
+const error = ref('');
+const toast = useToast();
 
-const loadSubjects = async () => {
+// Computed property for available subjects (not already enrolled)
+const availableSubjects = computed(() => {
+  return subjects.value.filter(subject => 
+    !enrolledSubjects.value.some(es => es.id === subject.id)
+  );
+});
+
+// Track enrolled subjects to prevent duplicate enrollment
+const enrolledSubjects = ref([]);
+
+// Fetch subjects and check enrollment status
+const fetchData = async () => {
   try {
-    const subjects = await subjectsService.getSubjectList()
-    // Filter subjects by year level and remove already enrolled ones
-    availableSubjects.value = subjects.filter(subject => 
-      subject.year_level <= props.yearLevel
-    )
+    loading.value = true;
+    
+    // Fetch all subjects
+    const [subjectsData, enrolledData] = await Promise.all([
+      subjectsService.getSubjectList(),
+      studentsService.getEnrollments(props.studentId)
+    ]);
+    
+    subjects.value = subjectsData;
+    enrolledSubjects.value = enrolledData || [];
+    
   } catch (err) {
-    console.error('Error loading subjects:', err)
-    error.value = 'Failed to load available subjects'
+    console.error('Error fetching data:', err);
+    toast.error('Failed to load data. Please try again.');
+  } finally {
+    loading.value = false;
   }
-}
+};
 
 const handleEnroll = async () => {
-  if (selectedSubjects.value.length === 0) return
-  
-  error.value = ''
-  loading.value = true
-  
-  try {
-    await Promise.all(
-      selectedSubjects.value.map(subjectId =>
-        subjectsService.enrollStudent(subjectId, props.studentId)
-      )
-    )
-    emit('enrolled')
-    close()
-  } catch (err) {
-    console.error('Error enrolling student:', err)
-    error.value = err.response?.data?.error || 'Failed to enroll student'
-  } finally {
-    loading.value = false
+  if (selectedSubjects.value.length === 0) {
+    error.value = 'Please select at least one subject';
+    return;
   }
-}
+
+  loading.value = true;
+  error.value = '';
+
+  try {
+    // Get student details to ensure we have the correct student_id
+    const student = await studentsService.getStudent(props.studentId);
+    
+    // Process enrollments in parallel
+    const results = await Promise.allSettled(
+      selectedSubjects.value.map(subjectId => 
+        subjectsService.enrollStudent({
+          subject: subjectId,
+          student: student.student_id
+        })
+      )
+    );
+    
+    // Check for any failed enrollments
+    const failedEnrollments = results
+      .map((result, index) => ({
+        subjectId: selectedSubjects.value[index],
+        error: result.status === 'rejected' ? result.reason : null
+      }))
+      .filter(item => item.error);
+    
+    if (failedEnrollments.length > 0) {
+      console.error('Some enrollments failed:', failedEnrollments);
+      if (failedEnrollments.length === selectedSubjects.value.length) {
+        throw new Error('Failed to enroll in any subjects. Please try again.');
+      }
+      toast.warning(`Enrolled in some subjects, but ${failedEnrollments.length} failed.`);
+    } else {
+      toast.success('Successfully enrolled in all selected subjects');
+    }
+    
+    emit('enrolled');
+    close();
+  } catch (err) {
+    console.error('Error in enrollment process:', err);
+    error.value = err.message || 'Failed to enroll student. Please try again.';
+    toast.error(error.value);
+  } finally {
+    loading.value = false;
+  }
+};
 
 const close = () => {
-  selectedSubjects.value = []
-  error.value = ''
-  emit('close')
-}
+  selectedSubjects.value = [];
+  error.value = '';
+  emit('close');
+};
 
-onMounted(loadSubjects)
+// Watch for modal open to refresh data
+onMounted(() => {
+  if (props.show) {
+    fetchData();
+  }
+});
+
+// Watch for show prop changes
+watch(() => props.show, (newVal) => {
+  if (newVal) {
+    fetchData();
+  } else {
+    close();
+  }
+});
 </script>

@@ -192,9 +192,15 @@
 import { gradesService } from '@/services/api/grades.js'
 import { studentsService } from '@/services/api/students.js'
 import { subjectsService } from '@/services/api/subjects.js'
+import { useToast } from 'vue-toastification'
 
 export default {
   name: 'GradeBookView',
+  setup() {
+    // Initialize toast
+    const toast = useToast()
+    return { toast }
+  },
   data() {
     return {
       gradeBookData: [],
@@ -216,6 +222,22 @@ export default {
   async mounted() {
     await this.loadSections()
     await this.loadSubjects()
+    
+    // Set up toast defaults
+    this.toast.updateDefaults({
+      position: 'top-right',
+      timeout: 5000,
+      closeOnClick: true,
+      pauseOnFocusLoss: true,
+      pauseOnHover: true,
+      draggable: true,
+      draggablePercent: 0.6,
+      showCloseButtonOnHover: false,
+      hideProgressBar: false,
+      closeButton: 'button',
+      icon: true,
+      rtl: false
+    })
   },
   methods: {
     formatOrdinal(num) {
@@ -261,20 +283,49 @@ export default {
     
     async updateGrade(studentId, assessmentId, score) {
       try {
+        // Convert score to number
+        const scoreNum = parseFloat(score);
+        
+        // Find the assessment to get max score
+        const assessment = this.assessments.find(a => a.id === assessmentId);
+        
+        // Client-side validation
+        if (isNaN(scoreNum)) {
+          this.toast.error('Please enter a valid number');
+          return;
+        }
+        
+        if (scoreNum < 0) {
+          this.toast.error('Score cannot be negative');
+          return;
+        }
+        
+        if (assessment && scoreNum > assessment.max_score) {
+          this.toast.error(`Score (${scoreNum}) cannot exceed the maximum score (${assessment.max_score})`);
+          return;
+        }
+        
+        // If validation passes, proceed with the API call
         await gradesService.updateGrades({
           student: studentId,
           assessment: assessmentId,
-          score: parseFloat(score) || 0
+          score: scoreNum
         });
         
         // Show success message
-        alert('Grade updated successfully');
+        this.toast.success('Grade updated successfully');
         
         // Reload grade book to update totals and averages
         await this.loadGradeBook();
       } catch (error) {
         console.error('Error updating grade:', error);
-        alert('Failed to update grade: ' + (error.response?.data?.error || 'Unknown error'));
+        const errorMessage = error.response?.data?.error || 
+                            error.response?.data?.detail || 
+                            'Failed to update grade';
+        this.toast.error(errorMessage);
+        
+        // Reload to reset any invalid input
+        await this.loadGradeBook();
       }
     },
     
@@ -295,12 +346,13 @@ export default {
         }
         
         await serviceMethod(formData)
+        this.toast.success('Assessment created successfully')
         await this.loadAssessments()
         await this.loadGradeBook()
         this.closeAssessmentModal()
       } catch (error) {
         console.error('Error saving assessment:', error)
-        alert(error.response?.data?.detail || 'Failed to save assessment')
+        this.toast.error(error.response?.data?.detail || 'Failed to save assessment')
       } finally {
         this.saving = false
       }

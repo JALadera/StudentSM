@@ -30,6 +30,24 @@ class GradeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Grade
         fields = '__all__'
+    
+    def validate(self, data):
+        """
+        Check that the score doesn't exceed the assessment's max score.
+        """
+        score = data.get('score')
+        assessment = data.get('assessment')
+        
+        # If this is an update, get the existing assessment if not provided
+        if self.instance and not assessment:
+            assessment = self.instance.assessment
+        
+        if score is not None and assessment and score > assessment.max_score:
+            raise serializers.ValidationError(
+                f"Score ({score}) cannot exceed the assessment's maximum score ({assessment.max_score})"
+            )
+        
+        return data
 
 class GradeBookSerializer(serializers.Serializer):
     student_id = serializers.IntegerField()

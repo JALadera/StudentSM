@@ -5,8 +5,11 @@ from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
+import logging
 from .models import Student, Section
 from .serializers import StudentSerializer, StudentCreateSerializer, BulkStudentSerializer, SectionSerializer
+
+logger = logging.getLogger(__name__)
 
 class StudentPagination(PageNumberPagination):
     page_size = 10
@@ -15,6 +18,24 @@ class StudentPagination(PageNumberPagination):
 
 from django.db.models import Q
 from rest_framework import filters
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def student_by_student_id(request, student_id):
+    """
+    Get student details by student_id (not primary key)
+    """
+    try:
+        logger.info(f'Looking up student with student_id: {student_id}')
+        student = get_object_or_404(Student, student_id=student_id.upper())
+        serializer = StudentSerializer(student)
+        return Response(serializer.data)
+    except Exception as e:
+        logger.error(f'Error looking up student {student_id}: {str(e)}')
+        return Response(
+            {'error': f'Student with ID {student_id} not found'},
+            status=status.HTTP_404_NOT_FOUND
+        )
 
 class StudentViewSet(viewsets.ModelViewSet):
     queryset = Student.objects.all().select_related('section')
@@ -202,33 +223,34 @@ def bulk_assign_section(request):
         "section_id": 1
     }
     """
+    if request.method != 'POST':
+        return Response(
+            {'error': 'Method not allowed'},
+            status=status.HTTP_405_METHOD_NOT_ALLOWED
+        )
+
     try:
         student_ids = request.data.get('student_ids', [])
         section_id = request.data.get('section_id')
-        
+
         if not student_ids or not section_id:
             return Response(
-                {'error': 'Both student_ids and section_id are required'}, 
+                {'error': 'student_ids and section_id are required'},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+        # Get section or return 404
+        section = get_object_or_404(Section, pk=section_id)
         
-        # Get the section
-        try:
-            section = Section.objects.get(id=section_id)
-        except Section.DoesNotExist:
-            return Response(
-                {'error': 'Section not found'}, 
-                status=status.HTTP_404_NOT_FOUND
-            )
-        
-        # Update all students at once
-        updated_count = Student.objects.filter(id__in=student_ids).update(section=section)
-        
+        # Update all students in the list
+        updated_count = Student.objects.filter(
+            id__in=student_ids
+        ).update(section=section)
+
         return Response({
-            'message': f'Successfully assigned {updated_count} students to {section.name}',
-            'updated_count': updated_count
+            'message': f'Successfully assigned {updated_count} students to section {section.name}'
         })
-        
+
     except Exception as e:
         import logging
         logger = logging.getLogger(__name__)
