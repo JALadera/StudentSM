@@ -286,25 +286,23 @@
           </div>
         </div>
       </div>
-    </div>
-    <!-- End of Main Content -->
-
-    <!-- Modals -->
-    <BulkRegisterModal 
-      v-if="showBulkRegisterModal" 
-      @close="showBulkRegisterModal = false"
-      @success="loadStats"
-    />
-    <BulkSectionWizard 
-      v-if="showBulkSectionModal" 
-      @close="showBulkSectionModal = false"
-      @success="handleModalSuccess"
-    />
-    <BulkEnrollModal 
-      v-if="showBulkEnrollModal" 
-      @close="showBulkEnrollModal = false"
-      @success="loadStats"
-    />
+    <!-- Modals Container -->
+    
+      <BulkRegisterModal 
+        v-if="showBulkRegisterModal" 
+        @close="showBulkRegisterModal = false"
+        @success="loadStats"
+      />
+      <BulkSectionWizard 
+        v-if="showBulkSectionModal" 
+        @close="showBulkSectionModal = false"
+        @success="handleModalSuccess"
+      />
+      <BulkEnrollModal 
+        v-if="showBulkEnrollModal" 
+        @close="showBulkEnrollModal = false"
+        @success="loadStats"
+      />
 
       <!-- Quick Add Student Modal -->
       <div v-if="showAddStudentModal" class="fixed inset-0 bg-black bg-opacity-75 overflow-y-auto h-full w-full z-50">
@@ -401,26 +399,82 @@
       <!-- Subject Selection Modal for Assessment -->
       <div v-if="showSubjectSelectModal" class="fixed inset-0 bg-black bg-opacity-75 overflow-y-auto h-full w-full z-50">
         <div class="relative top-20 mx-auto p-6 border w-[500px] shadow-lg rounded-lg bg-[#1a1a1a] border-gray-800">
-          <h3 class="text-xl font-medium text-gray-200 mb-6">Select Subject for Assessment</h3>
-          <div class="space-y-4">
-            <select v-model="selectedSubject" required
-                    class="block w-full rounded-md bg-[#141414] border-gray-800 text-gray-200">
-              <option value="">Select a Subject</option>
-              <option v-for="subject in subjects" :key="subject.id" :value="subject.id">
-                {{ subject.code }} - {{ subject.name }}
-              </option>
-            </select>
+          <h3 class="text-xl font-medium text-gray-200 mb-6">Create Assessment</h3>
+          
+          <div v-if="error" class="mb-4 p-4 bg-red-900/30 text-red-400 rounded-md">
+            {{ error }}
+          </div>
+
+          <form @submit.prevent="handleCreateAssessment" class="space-y-4">
+            <!-- Subject Selection -->
+            <div>
+              <label class="block text-sm font-medium text-gray-400 mb-2">Subject</label>
+              <select 
+                v-model="selectedSubject"
+                required
+                class="block w-full rounded-md bg-[#141414] border-gray-800 text-gray-200"
+              >
+                <option value="">Select a Subject</option>
+                <option v-for="subject in subjects" :key="subject.id" :value="subject.id">
+                  {{ subject.code }} - {{ subject.name }}
+                </option>
+              </select>
+            </div>
+
+            <!-- Assessment Form Fields -->
+            <div>
+              <label class="block text-sm font-medium text-gray-400 mb-2">Assessment Name</label>
+              <input
+                v-model="assessmentForm.name"
+                type="text"
+                required
+                class="block w-full rounded-md bg-[#141414] border-gray-800 text-gray-200"
+                placeholder="Enter assessment name"
+              />
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-400 mb-2">Type</label>
+              <select
+                v-model="assessmentForm.assessment_type"
+                required
+                class="block w-full rounded-md bg-[#141414] border-gray-800 text-gray-200"
+              >
+                <option value="activity">Activity</option>
+                <option value="quiz">Quiz</option>
+                <option value="exam">Exam</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-400 mb-2">Max Score</label>
+              <input
+                v-model="assessmentForm.max_score"
+                type="number"
+                required
+                min="1"
+                step="0.01"
+                class="block w-full rounded-md bg-[#141414] border-gray-800 text-gray-200"
+              />
+            </div>
+
             <div class="flex justify-end space-x-4">
-              <button @click="closeSubjectSelectModal"
-                      class="px-4 py-2 text-sm font-medium text-gray-400 bg-[#141414] rounded-md hover:bg-[#1f1f1f]">
+              <button 
+                type="button"
+                @click="closeSubjectSelectModal"
+                class="px-4 py-2 text-sm font-medium text-gray-400 bg-[#141414] rounded-md hover:bg-[#1f1f1f]"
+              >
                 Cancel
               </button>
-              <button @click="proceedToAssessment" :disabled="!selectedSubject"
-                      class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50">
-                Next
+              <button 
+                type="submit"
+                :disabled="!selectedSubject || saving"
+                class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50"
+              >
+                {{ saving ? 'Saving...' : 'Create Assessment' }}
               </button>
             </div>
-          </div>
+          </form>
         </div>
       </div>
 
@@ -612,230 +666,8 @@
           </form>
         </div>
       </div>
+  </div>
 
-    <!-- Modals -->
-    <div v-if="showBulkRegisterModal" class="fixed inset-0 bg-black bg-opacity-75 z-50" @click.self="showBulkRegisterModal = false">
-      <BulkRegisterModal 
-        @close="() => showBulkRegisterModal = false"
-        @success="handleModalSuccess"
-      />
-    </div>
-    
-    <div v-if="showBulkSectionModal" class="fixed inset-0 bg-black bg-opacity-75 z-50" @click.self="showBulkSectionModal = false">
-      <BulkSectionWizard 
-        @close="() => showBulkSectionModal = false"
-        @success="handleModalSuccess"
-      />
-    </div>
-    
-    <div v-if="showBulkEnrollModal" class="fixed inset-0 bg-black bg-opacity-75 z-50" @click.self="showBulkEnrollModal = false">
-      <BulkEnrollModal 
-        @close="() => showBulkEnrollModal = false"
-        @success="handleModalSuccess"
-      />
-    </div>
-
-    <!-- Quick Add Student Modal -->
-    <div v-if="showAddStudentModal" class="fixed inset-0 bg-black bg-opacity-75 overflow-y-auto h-full w-full z-50">
-      <div class="relative top-20 mx-auto p-6 border w-[600px] shadow-lg rounded-lg bg-[#1a1a1a] border-gray-800">
-        <h3 class="text-xl font-medium text-gray-200 mb-6">Add New Student</h3>
-        
-        <form @submit.prevent="handleAddStudent" class="space-y-4">
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-400">Student ID *</label>
-              <input 
-                v-model="studentForm.student_id" 
-                type="text" 
-                required
-                class="mt-1 block w-full rounded-md bg-[#141414] border-gray-800 text-gray-200"
-              />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-400">Section *</label>
-              <select 
-                v-model="studentForm.section" 
-                required
-                class="mt-1 block w-full rounded-md bg-[#141414] border-gray-800 text-gray-200"
-              >
-                <option value="">Select Section</option>
-                <option v-for="section in sections" :key="section.id" :value="section.id">
-                  Year {{ section.year_level }} - {{ formatOrdinal(section.name) }} Section
-                </option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-400">First Name *</label>
-              <input 
-                v-model="studentForm.first_name" 
-                type="text" 
-                required
-                class="mt-1 block w-full rounded-md bg-[#141414] border-gray-800 text-gray-200"
-              />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-400">Last Name *</label>
-              <input 
-                v-model="studentForm.last_name" 
-                type="text" 
-                required
-                class="mt-1 block w-full rounded-md bg-[#141414] border-gray-800 text-gray-200"
-              />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-400">Email *</label>
-              <input 
-                v-model="studentForm.email" 
-                type="email" 
-                required
-                class="mt-1 block w-full rounded-md bg-[#141414] border-gray-800 text-gray-200"
-              />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-400">Date of Birth *</label>
-              <input 
-                v-model="studentForm.date_of_birth" 
-                type="date" 
-                required
-                class="mt-1 block w-full rounded-md bg-[#141414] border-gray-800 text-gray-200"
-              />
-            </div>
-          </div>
-
-          <!-- Error Display -->
-          <div v-if="error" class="p-4 bg-red-900/30 text-red-400 rounded-lg">
-            {{ error }}
-          </div>
-
-          <div class="flex justify-end space-x-4">
-            <button
-              type="button"
-              @click="closeAddStudentModal"
-              class="px-4 py-2 text-sm font-medium text-gray-400 bg-[#141414] rounded-md hover:bg-[#1f1f1f]"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              :disabled="loading"
-              class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50"
-            >
-              {{ loading ? 'Processing...' : 'Add Student' }}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <!-- Subject Selection Modal for Assessment -->
-    <div v-if="showSubjectSelectModal" class="fixed inset-0 bg-black bg-opacity-75 overflow-y-auto h-full w-full z-50">
-      <div class="relative top-20 mx-auto p-6 border w-[500px] shadow-lg rounded-lg bg-[#1a1a1a] border-gray-800">
-        <h3 class="text-xl font-medium text-gray-200 mb-6">Select Subject for Assessment</h3>
-        <div class="space-y-4">
-          <select v-model="selectedSubject" required
-                  class="block w-full rounded-md bg-[#141414] border-gray-800 text-gray-200">
-            <option value="">Select a Subject</option>
-            <option v-for="subject in subjects" :key="subject.id" :value="subject.id">
-              {{ subject.code }} - {{ subject.name }}
-            </option>
-          </select>
-          <div class="flex justify-end space-x-4">
-            <button @click="closeSubjectSelectModal"
-                    class="px-4 py-2 text-sm font-medium text-gray-400 bg-[#141414] rounded-md hover:bg-[#1f1f1f]">
-              Cancel
-            </button>
-            <button @click="proceedToAssessment" :disabled="!selectedSubject"
-                    class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50">
-              Next
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Quick Add Subject Modal -->
-    <div v-if="showAddSubjectModal" class="fixed inset-0 bg-black bg-opacity-75 overflow-y-auto h-full w-full z-50">
-      <div class="relative top-20 mx-auto p-6 border w-[600px] shadow-lg rounded-lg bg-[#1a1a1a] border-gray-800">
-        <h3 class="text-xl font-medium text-gray-200 mb-6">Add New Subject</h3>
-        
-        <form @submit.prevent="handleAddSubject" class="space-y-4">
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-400">Subject Code *</label>
-              <input 
-                v-model="subjectForm.code"
-                type="text"
-                required
-                class="mt-1 block w-full rounded-md bg-[#141414] border-gray-800 text-gray-200"
-              />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-400">Units *</label>
-              <input 
-                v-model="subjectForm.units"
-                type="number"
-                required
-                min="1"
-                class="mt-1 block w-full rounded-md bg-[#141414] border-gray-800 text-gray-200"
-              />
-            </div>
-            <div class="col-span-2">
-              <label class="block text-sm font-medium text-gray-400">Subject Name *</label>
-              <input 
-                v-model="subjectForm.name"
-                type="text"
-                required
-                class="mt-1 block w-full rounded-md bg-[#141414] border-gray-800 text-gray-200"
-              />
-            </div>
-            <div class="col-span-2">
-              <label class="block text-sm font-medium text-gray-400">Description</label>
-              <textarea 
-                v-model="subjectForm.description"
-                rows="3"
-                class="mt-1 block w-full rounded-md bg-[#141414] border-gray-800 text-gray-200"
-              ></textarea>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-400">Year Level *</label>
-              <select 
-                v-model="subjectForm.year_level"
-                required
-                class="mt-1 block w-full rounded-md bg-[#141414] border-gray-800 text-gray-200"
-              >
-                <option value="1">First Year</option>
-                <option value="2">Second Year</option>
-                <option value="3">Third Year</option>
-                <option value="4">Fourth Year</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- Error Display -->
-          <div v-if="error" class="p-4 bg-red-900/30 text-red-400 rounded-lg">
-            {{ error }}
-          </div>
-
-          <div class="flex justify-end space-x-4">
-            <button
-              type="button"
-              @click="closeAddSubjectModal"
-              class="px-4 py-2 text-sm font-medium text-gray-400 bg-[#141414] rounded-md hover:bg-[#1f1f1f]"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              :disabled="loading"
-              class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50"
-            >
-              {{ loading ? 'Processing...' : 'Add Subject' }}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
- 
 
 </template>
 
@@ -901,8 +733,15 @@ const subjectForm = ref({
   year_level: 1,
   prerequisites: []
 })
+const selectedSubject = ref('')
 
-// Load stats for dashboard
+const assessmentForm = ref({
+  name: '',
+  assessment_type: 'activity',
+  max_score: '',
+})
+const saving = ref(false)
+
 const loadStats = async () => {
   try {
     const dashboardStats = await gradesService.getDashboardStats()
@@ -982,10 +821,10 @@ const proceedToAssessment = () => {
   if (selectedSubject.value) {
     // Navigate to the assessments page with the selected subject and redirect flag
     router.push({
-      name: 'Assessments',
+      name: 'GradeBook', // Changed from 'Assessments'
       query: { 
         subjectId: selectedSubject.value,
-        redirectToSubject: 'true'  // Add this flag
+        openAssessmentModal: 'true' // Changed from redirectToSubject
       }
     })
     closeSubjectSelectModal()
@@ -1067,6 +906,37 @@ const handleAddSubject = async () => {
   }
 }
 
+// Handle assessment creation
+const handleCreateAssessment = async () => {
+  if (!selectedSubject.value) {
+    error.value = 'Please select a subject'
+    return
+  }
+
+  saving.value = true
+  error.value = ''
+  
+  try {
+    const formData = {
+      name: assessmentForm.value.name.trim(),
+      subject: parseInt(selectedSubject.value),
+      max_score: parseFloat(assessmentForm.value.max_score),
+      assessment_type: assessmentForm.value.assessment_type,
+      date: new Date().toISOString().split('T')[0]
+    }
+
+    await gradesService.createAssessment(formData)
+    closeSubjectSelectModal()
+    // Show success message
+    alert('Assessment created successfully')
+  } catch (err) {
+    console.error('Error creating assessment:', err)
+    error.value = err.response?.data?.error || 'Failed to create assessment'
+  } finally {
+    saving.value = false
+  }
+}
+
 // Close modals and reset forms
 const closeAddStudentModal = () => {
   showAddStudentModal.value = false
@@ -1084,6 +954,12 @@ const closeAddStudentModal = () => {
 const closeSubjectSelectModal = () => {
   showSubjectSelectModal.value = false
   selectedSubject.value = ''
+  error.value = ''
+  assessmentForm.value = {
+    name: '',
+    assessment_type: 'activity',
+    max_score: '',
+  }
 }
 
 const closeQuickEnrollModal = () => {

@@ -330,31 +330,48 @@ export default {
     },
     
     async saveAssessment() {
-      this.saving = true
+      this.saving = true;
       try {
-        const serviceMethod = {
-          activity: gradesService.createActivity,
-          quiz: gradesService.createQuiz,
-          exam: gradesService.createExam
-        }[this.assessmentForm.assessment_type]
-        
-        // Include the selected subject in the form data
-        const formData = {
-          ...this.assessmentForm,
-          subject: this.selectedSubject,
-          max_score: parseFloat(this.assessmentForm.max_score)
+        // Validate required fields
+        if (!this.assessmentForm.name?.trim()) {
+          throw new Error('Assessment name is required');
         }
+        if (!this.selectedSubject) {
+          throw new Error('Subject is required');
+        }
+        if (!this.assessmentForm.max_score || this.assessmentForm.max_score <= 0) {
+          throw new Error('Max score must be greater than 0');
+        }
+
+        // Format the data according to API requirements
+        const formData = {
+          name: this.assessmentForm.name.trim(),
+          subject: parseInt(this.selectedSubject), // Ensure subject is a number
+          max_score: parseFloat(this.assessmentForm.max_score),
+          assessment_type: this.assessmentForm.assessment_type,
+          date: new Date().toISOString().split('T')[0] // Use current date if not provided
+        };
+
+        // Log the request data for debugging
+        console.log('Creating assessment with data:', formData);
+
+        // Make the API call
+        const response = await gradesService.createAssessment(formData);
         
-        await serviceMethod(formData)
-        this.toast.success('Assessment created successfully')
-        await this.loadAssessments()
-        await this.loadGradeBook()
-        this.closeAssessmentModal()
+        this.toast.success('Assessment created successfully');
+        await this.loadAssessments();
+        await this.loadGradeBook();
+        this.closeAssessmentModal();
       } catch (error) {
-        console.error('Error saving assessment:', error)
-        this.toast.error(error.response?.data?.detail || 'Failed to save assessment')
+        console.error('Error saving assessment:', error);
+        // Show more specific error message
+        const errorMessage = error.response?.data?.detail || 
+                            error.response?.data?.error ||
+                            error.message ||
+                            'Failed to save assessment';
+        this.toast.error(errorMessage);
       } finally {
-        this.saving = false
+        this.saving = false;
       }
     },
     

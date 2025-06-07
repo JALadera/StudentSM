@@ -5,32 +5,43 @@ import axios from "./axios"
 export const gradesService = {
   async createAssessment(data) {
     try {
-      const response = await axios.post("/grades/assessments/", {
-        name: data.name,
-        subject: data.subject,  
+      // Format the data properly for the API
+      const formData = {
+        name: data.name.trim(),
+        subject: parseInt(data.subject),
         max_score: parseFloat(data.max_score),
-        date: data.date || new Date().toISOString().split('T')[0],
-        assessment_type: data.type || 'activity'
-      });
+        assessment_type: data.assessment_type,
+        date: data.date || new Date().toISOString().split('T')[0]
+      };
+
+      console.log('Creating assessment with data:', formData);
+      const response = await axios.post("/grades/assessments/", formData);
       return response.data;
     } catch (error) {
-      console.error('Error creating assessment:', error.response?.data || error.message);
+      console.error('Error creating assessment:', error);
       throw error;
     }
   },
 
   async createQuiz(data) {
-    return gradesService.createAssessment({
+    return this.createAssessment({
       ...data,
-      type: 'quiz'
-    })
+      assessment_type: 'quiz'
+    });
   },
 
   async createExam(data) {
-    return gradesService.createAssessment({
+    return this.createAssessment({
       ...data,
-      type: 'exam'
-    })
+      assessment_type: 'exam'
+    });
+  },
+
+  async createActivity(data) {
+    return this.createAssessment({
+      ...data,
+      assessment_type: 'activity'
+    });
   },
 
   async getGradeBook(sectionId, subjectId) {
@@ -131,11 +142,6 @@ export const gradesService = {
       console.error('Error fetching assessments:', error)
       throw error
     }
-  },
-
-  async createAssessment(data) {
-    const response = await axios.post('/grades/assessments/', data)
-    return response.data
   },
 
   async updateAssessment(id, data) {
