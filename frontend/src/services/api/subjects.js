@@ -187,10 +187,6 @@ export const subjectsService = {
     }
   },
 
-
-
-
-
   async updateGradeWeights(subjectId, weights) {
     try {
       const formattedWeights = {
@@ -215,5 +211,20 @@ export const subjectsService = {
       console.error('Error bulk enrolling students:', error)
       throw error
     }
-  }
+  },
+
+  /**
+   * Get all enrollments for a specific student
+   * @param {string|number} studentId - Student ID
+   * @returns {Promise<Array>} List of enrollments
+   */
+  async getEnrollments(studentId) {
+    try {
+      const response = await axios.get(`/subjects/student-enrollments/${studentId}/`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching student enrollments:', error);
+      throw error;
+    }
+  },
 }

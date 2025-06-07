@@ -287,22 +287,35 @@
         </div>
       </div>
     <!-- Modals Container -->
-    
-      <BulkRegisterModal 
-        v-if="showBulkRegisterModal" 
-        @close="showBulkRegisterModal = false"
-        @success="loadStats"
-      />
-      <BulkSectionWizard 
-        v-if="showBulkSectionModal" 
-        @close="showBulkSectionModal = false"
-        @success="handleModalSuccess"
-      />
-      <BulkEnrollModal 
-        v-if="showBulkEnrollModal" 
-        @close="showBulkEnrollModal = false"
-        @success="loadStats"
-      />
+      <div class="modals-container">
+      <!-- Bulk Action Modals -->
+      <div v-if="showBulkRegisterModal" class="modal-backdrop">
+        <div class="modal-content">
+          <BulkRegisterModal 
+            @close="showBulkRegisterModal = false"
+            @success="loadStats"
+          />
+        </div>
+      </div>
+
+      <div v-if="showBulkSectionModal" class="modal-backdrop">
+        <div class="modal-content">
+          <BulkSectionWizard 
+            @close="showBulkSectionModal = false"
+            @success="handleModalSuccess"
+          />
+        </div>
+      </div>
+
+      <div v-if="showBulkEnrollModal" class="modal-backdrop">
+        <div class="modal-content">
+          <BulkEnrollModal 
+            @close="showBulkEnrollModal = false"
+            @success="loadStats"
+          />
+        </div>
+      </div>
+      </div>
 
       <!-- Quick Add Student Modal -->
       <div v-if="showAddStudentModal" class="fixed inset-0 bg-black bg-opacity-75 overflow-y-auto h-full w-full z-50">
@@ -480,18 +493,18 @@
 
       <!-- Quick Enroll Modal -->
       <div v-if="showQuickEnrollModal" class="fixed inset-0 bg-black bg-opacity-90 overflow-y-auto h-full w-full z-50">
-        <div class="relative top-20 mx-auto p-6 border w-[800px] shadow-lg rounded-lg bg-black border-red-700">
+        <div class="relative top-20 mx-auto p-6 border w-[800px] shadow-lg rounded-lg bg-black border-gray-800">
           <h3 class="text-xl font-medium text-white mb-6">Quick Enroll Student</h3>
           
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <!-- Student List -->
-            <div class="bg-black p-4 rounded-lg border border-red-700">
+            <div class="bg-black p-4 rounded-lg border border-gray-800">
               <h4 class="text-md font-medium text-white mb-3">Available Students</h4>
               <div class="mb-3">
                 <input 
                   v-model="studentSearch"
                   type="text" 
-                  class="w-full px-3 py-2 bg-gray-900 border border-red-700 rounded-md text-white placeholder-gray-500"
+                  class="w-full px-3 py-2 bg-gray-900 border border-gray-800 rounded-md text-white placeholder-gray-500"
                   placeholder="Search students..."
                   @input="searchStudents"
                 >
@@ -499,7 +512,7 @@
               <div class="max-h-80 overflow-y-auto">
                 <table class="min-w-full">
                   <thead>
-                    <tr class="text-left text-xs text-red-400 border-b border-red-700">
+                    <tr class="text-left text-xs text-red-400 border-b border-gray-700">
                       <th class="pb-2">ID</th>
                       <th class="pb-2">Name</th>
                       <th class="pb-2">Course</th>
@@ -511,7 +524,7 @@
                       v-for="student in filteredStudents" 
                       :key="student.id"
                       @click="selectStudent(student)"
-                      class="border-b border-red-900 hover:bg-red-900/20 cursor-pointer transition-colors"
+                      class="border-b border-gray-900 hover:bg-red-900/20 cursor-pointer transition-colors"
                       :class="{'bg-red-900/40': selectedStudent?.id === student.id}"
                     >
                       <td class="py-2 px-1 text-white">{{ student.student_id }}</td>
@@ -529,7 +542,7 @@
             
             <!-- Enrollment Form -->
             <div>
-              <div class="bg-black p-4 rounded-lg mb-4 border border-red-700">
+              <div class="bg-black p-4 rounded-lg mb-4 border border-gray-700">
                 <h4 class="text-md font-medium text-white mb-3">Selected Student</h4>
                 <div v-if="selectedStudent" class="space-y-2 text-gray-300">
                   <p><span class="text-red-400">ID:</span> {{ selectedStudent.student_id }}</p>
@@ -542,11 +555,11 @@
                 </div>
               </div>
               
-              <div class="bg-black p-4 rounded-lg border border-red-700">
+              <div class="bg-black p-4 rounded-lg border border-gray-700">
                 <h4 class="text-md font-medium text-white mb-3">Select Subject</h4>
                 <select 
                   v-model="enrollForm.subject_id"
-                  class="w-full px-3 py-2 bg-gray-900 border border-red-700 rounded-md text-white mb-4 focus:ring-2 focus:ring-red-600 focus:border-transparent"
+                  class="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-md text-white mb-4 focus:ring-2 focus:ring-red-600 focus:border-transparent"
                   required
                 >
                   <option value="" class="bg-black">Select a subject</option>
@@ -1005,3 +1018,44 @@ onMounted(async () => {
   }
 })
 </script>
+
+<style scoped>
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.75);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 5vh;
+  z-index: 50;
+}
+
+.modal-content {
+  background-color: #1a1a1a;
+  border-radius: 0.5rem;
+  border: 1px solid #374151;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  max-width: 90vw;
+  width: auto;
+  margin: 0 auto;
+  position: relative;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modals-container {
+  position: relative;
+  z-index: 100;
+}
+
+.bulk-modal {
+  min-width: 500px;
+  max-width: 800px;
+  background-color: #1a1a1a;
+  border-radius: 0.5rem;
+}
+</style>

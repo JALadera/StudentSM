@@ -255,8 +255,8 @@ const loadEnrollments = async () => {
   try {
     console.log('Loading enrollments for student:', student.value.id);
     
-    // Load enrollments first
-    const enrollmentsResponse = await subjectsService.getStudentEnrollments(student.value.id)
+    // Use getEnrollments instead of getStudentEnrollments
+    const enrollmentsResponse = await subjectsService.getEnrollments(student.value.id)
       .catch(err => {
         console.error('Error loading enrollments:', err);
         return [];
